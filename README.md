@@ -21,3 +21,13 @@ Install the software from https://coppermountaintech.com/download-free-vna-softw
 > ```
 > export TERM=xterm
 > ```
+
+**Resources**
+
+Monsalve et al., 2016 on calibration: https://ui.adsabs.harvard.edu/abs/2016ITMTT..64.2631M/abstract
+
+Calibration kit documentation: https://coppermountaintech.com/calibration-kits/s911t-calibration-kit/ \
+CMT Software on Single Board Computers: https://coppermountaintech.com/usb-vnas-with-single-board-computers/ \
+CMT Automation Guide: https://coppermountaintech.com/automation-guide-for-cmt-vnas/ \
+CMT Documention: https://coppermountaintech.com/help-r/index.html \
+CMT Repositories: https://github.com/orgs/Copper-Mountain-Technologies/repositories
