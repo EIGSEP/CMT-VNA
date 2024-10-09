@@ -1,4 +1,4 @@
-# CMT-VNA
+# Copper Mountain Techonologies VNA
 
 **Installation**
 
@@ -21,6 +21,10 @@ Install the software from https://coppermountaintech.com/download-free-vna-softw
 > ```
 > export TERM=xterm
 > ```
+
+**Getting started**
+
+After installation, the software can be opened by running the exectuable, e.g., `./CMT_RVNA_22.4.3_x86_64.AppImage`. Then enable the TCP protocol in System > Mis Settings > Network setup > Interface state: ON. Take note of the port; it's typically 5025. To do this from the command line---and optionally not opening the GUI---use `./CMT_RVNA_22.4.3_x86_64.AppImage EnableSocket:5025 InvisibleMode`.
 
 **Resources**
 
