@@ -2,3 +2,5 @@
 *.deb
 *.pyc
 .venv/
+build/
+src/*.egg-info
