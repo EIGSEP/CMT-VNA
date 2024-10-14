@@ -1,3 +1,4 @@
+from datetime import datetime
 import socket
 
 IP = "127.0.0.1"
@@ -32,6 +33,19 @@ class VNA:
 
         self.s.sendall(b"SENS:CORR:COLL:METH:SOLT1 1\n")
         self.s.sendall(b"SENS:CORR:COLL:SAVE\n")
+
+    def measure_S11(self, fname=None):
+        """
+        Measure S11 parameter and save CSV file
+        """
+        self.s.sendall("TRIG:SING\n".encode())
+        self.s.sendall(b"*OPC?\n")  # wait for operation complete
+
+        if not fname:
+            date = datetime.now().strftime("%Y%m%d_%H%M%S")
+            fname = f"S11_{date}.csv"
+
+        self.s.sendall(f"MMEM:STOR:FDAT {fname}\n".encode())
 
     def transfer_data(self):
         raise NotImplementedError
