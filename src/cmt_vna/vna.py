@@ -3,6 +3,7 @@ import socket
 IP = "127.0.0.1"
 PORT = 5025
 
+
 class VNA:
 
     def __init__(self, ip=IP, port=PORT):
@@ -13,7 +14,7 @@ class VNA:
 
     def __close__(self):
         self.s.close()
-    
+
     @property
     def id(self):
         self.s.sendall(b"*IDN?\n")
