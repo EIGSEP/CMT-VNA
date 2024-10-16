@@ -59,4 +59,9 @@ vna.setup_S11(
 
 i = 0
 while i < args.max_files:
-
+    try:
+        freq, s11 = vna.measure_S11()
+        np.savez(f"{args.outdir}/s11_{i}.npz", freq=freq, s11=s11)
+        i += 1
+    except KeyboardInterrupt:
+        break
