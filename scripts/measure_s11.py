@@ -1,5 +1,6 @@
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-from time import sleep
+import numpy as np
+import time
 from cmt_vna import VNA
 
 parser = ArgumentParser(
@@ -19,14 +20,14 @@ parser.add_argument(
     "--npoints", type=int, default=1601, help="Number of frequency points."
 )
 parser.add_argument(
-    '--ifbw', type=float, default=1e3, help='IF bandwidth in Hz.'
+    "--ifbw", type=float, default=1e3, help="IF bandwidth in Hz."
 )
 parser.add_argument(
-    '--power', type=float, default=-10, help='Power level in dBm.'
+    "--power", type=float, default=-10, help="Power level in dBm."
 )
 parser.add_argument(
     "--cadence",
-    type=float, 
+    type=float,
     default=300,
     help="How often to measure S11 in seconds.",
 )
@@ -63,5 +64,6 @@ while i < args.max_files:
         freq, s11 = vna.measure_S11()
         np.savez(f"{args.outdir}/s11_{i}.npz", freq=freq, s11=s11)
         i += 1
+        time.sleep(args.cadence)
     except KeyboardInterrupt:
         break
