@@ -1,4 +1,5 @@
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from datetime import datetime
 import numpy as np
 import time
 from cmt_vna import VNA
@@ -38,7 +39,7 @@ parser.add_argument(
     help="Maximum number of files to save.",
 )
 parser.add_argument(
-    "--outdir", type=str, default=".", help="Output directory."
+    "--outdir", type=str, default="/home/charlie/eigsep/CMT-VNA/data", help="Output directory."
 )
 args = parser.parse_args()
 
@@ -49,6 +50,8 @@ print(f"Connected to {vna.id}.")
 if args.cal:
     vna.calibrate_OSL()
     print("Calibration complete.")
+    print("Connect DUT and hit enter")
+    input()
 
 vna.setup_S11(
     fstart=args.fstart,
@@ -62,7 +65,8 @@ i = 0
 while i < args.max_files:
     try:
         freq, s11 = vna.measure_S11()
-        np.savez(f"{args.outdir}/s11_{i}.npz", freq=freq, s11=s11)
+        date = datetime.now().strftime("%Y%m%d_%H%M%S")
+        np.savez(f"{args.outdir}/{date}.npz", freq=freq, s11=s11)
         i += 1
         time.sleep(args.cadence)
     except KeyboardInterrupt:
