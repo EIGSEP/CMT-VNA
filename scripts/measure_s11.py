@@ -8,7 +8,7 @@ parser = ArgumentParser(
     formatter_class=ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
-    "--cal", type=bool, default=True, help="Perform calibration."
+    "--cal", action="store_true", default=False, help="Perform calibration."
 )
 parser.add_argument(
     "--fstart", type=float, default=1e6, help="Start frequency in Hz."
@@ -17,13 +17,13 @@ parser.add_argument(
     "--fstop", type=float, default=250e6, help="Stop frequency in Hz."
 )
 parser.add_argument(
-    "--npoints", type=int, default=1601, help="Number of frequency points."
+    "--npoints", type=int, default=1001, help="Number of frequency points."
 )
 parser.add_argument(
-    "--ifbw", type=float, default=1e3, help="IF bandwidth in Hz."
+    "--ifbw", type=float, default=100, help="IF bandwidth in Hz."
 )
 parser.add_argument(
-    "--power", type=float, default=-10, help="Power level in dBm."
+    "--power", type=float, default=-40, help="Power level in dBm."
 )
 parser.add_argument(
     "--cadence",
