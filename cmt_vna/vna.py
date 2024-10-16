@@ -1,6 +1,5 @@
-from datetime import datetime
-import socket
 import numpy as np
+import pyvisa
 
 IP = "127.0.0.1"
 PORT = 5025
@@ -9,26 +8,21 @@ PORT = 5025
 class VNA:
 
     def __init__(self, ip=IP, port=PORT):
-        self.ip = ip
-        self.port = port
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.s.connect((self.ip, self.port))
-
-    def __close__(self):
-        self.s.close()
+        self.rm = pyvisa.ResourceManager("@py")
+        self.s = self.rm.open_resource(f"TCPIP::{ip}::{port}::SOCKET")
+        self.s.read_termination = "\n"
+        self.s.timeout = 10000
 
     @property
     def id(self):
-        self.s.sendall(b"*IDN?\n")
-        return self.s.recv(4096).decode()
+        return self.s.query("*IDN?\n")
 
     @property
     def opc(self):
         """
         Query operation complete status
         """
-        self.s.sendall(b"*OPC?\n")
-        return self.s.recv(4096).decode()
+        return self.s.query("*OPC?\n")
 
     def calibrate_OSL(self):
         standards = {"open": "OPEN", "short": "SHOR", "load": "LOAD"}
@@ -62,18 +56,22 @@ class VNA:
             Power level in dBm
 
         """
-        self.s.sendall("CALC:FORM SCOM\n".encode())  # get s11 as real and imag
-        self.s.sendall(f"SOUR:POW {power_dBm}\n".encode())  # power level
-        self.s.sendall("SENS:AVER:COUN 1\n".encode())  # number of averages
-        self.s.sendall(f"SENS:FREQ:STAR {fstart} HZ\n".encode())
-        self.s.sendall(f"SENS:FREQ:STOP {fstop} HZ\n".encode())
-        self.s.sendall(f"SENS:SWE:POIN {npoints}\n".encode())
-        self.s.sendall(f"SENS:BWID {ifbw} HZ\n".encode())
-        self.s.sendall(b"TRIG:SOUR BUS\n")
+        values = []
+        self.s.write_ascii_values(
+            "CALC:FORM SCOM\n", values
+        )  # get s11 as real and imag
+        self.s.write_ascii_values(
+            f"SOUR:POW {power_dBm}\n", values
+        )  # power level
+        self.s.write_ascii_values(
+            "SENS:AVER:COUN 1\n", values
+        )  # number of averages
+        self.s.write_ascii_values(f"SENS:FREQ:STAR {fstart} HZ\n", values)
+        self.s.write_ascii_values(f"SENS:FREQ:STOP {fstop} HZ\n", values)
+        self.s.write_ascii_values(f"SENS:SWE:POIN {npoints}\n", values)
+        self.s.write_ascii_values(f"SENS:BWID {ifbw} HZ\n", values)
+        self.s.write_ascii_values("TRIG:SOUR BUS\n", values)
         return self.opc
-
-
-
 
     def measure_S11(self):
         """
@@ -87,20 +85,18 @@ class VNA:
             Complex-valued S11 parameter in dB
 
         """
-        self.s.sendall("TRIG:SEQ:SING\n".encode())
+        values = []
+        self.s.write_ascii_values("TRIG:SEQ:SING\n", values)
         if self.opc:
             print("Measurement complete")
-    
+
         # get frequencies
-        self.s.sendall(b"SENS:FREQ:DATA?\n")
-        freq = self.s.recv(4096).decode().split(",")
-        freq = np.array([float(f)/1e6 for f in freq])
+        freq = self.s.query("SENS:FREQ:DATA?\n").split(",")
+        freq = np.array([float(f) / 1e6 for f in freq])
 
         # get s11
-        self.s.sendall(b"CALC:TRAC:DATA:FDAT?\n")
-        s11 = self.s.recv(4096).decode().split(",")
+        s11 = self.s.query("CALC:TRAC:DATA:FDAT?\n").split(",")
         s11 = np.array([float(s) for s in s11])
-        s11 = s11[0::2] + 1j*s11[1::2]  # convert to complex
+        s11 = s11[0::2] + 1j * s11[1::2]  # convert to complex
 
         return freq, s11
-
