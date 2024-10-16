@@ -11,7 +11,7 @@ class VNA:
         self.rm = pyvisa.ResourceManager("@py")
         self.s = self.rm.open_resource(f"TCPIP::{ip}::{port}::SOCKET")
         self.s.read_termination = "\n"
-        self.s.timeout = 10000
+        self.s.timeout = 100000
 
     @property
     def id(self):
@@ -29,12 +29,12 @@ class VNA:
         for name, code in standards.items():
             print(f"Connect {name} standard, then press enter")
             input()
-            cmd = f"SENS:CORR:COLL:{code} 1\n"
-            self.s.sendall(cmd.encode())
+            cmd = f"SENS:CORR:COLL:{code} 1"
+            self.s.write(cmd)
             print(self.opc)  # wait for operation complete
 
-        self.s.sendall(b"SENS:CORR:COLL:METH:SOLT1 1\n")
-        self.s.sendall(b"SENS:CORR:COLL:SAVE\n")
+        self.s.write("SENS:CORR:COLL:METH:SOLT1 1")
+        self.s.write("SENS:CORR:COLL:SAVE")
 
     def setup_S11(
         self, fstart=1e6, fstop=250e6, npoints=1000, ifbw=100, power_dBm=0
