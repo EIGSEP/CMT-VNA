@@ -1,5 +1,6 @@
 import numpy as np
 import pyvisa
+import time
 
 IP = "127.0.0.1"
 PORT = 5025
@@ -24,36 +25,9 @@ class VNA:
         """
         return self.s.query("*OPC?\n")
 
-    def calibrate_OSL(self):
-        standards = {"open": "OPEN", "short": "SHOR", "load": "LOAD"}
-        for name, code in standards.items():
-            print(f"Connect {name} standard, then press enter")
-            input()
-            cmd = f"SENS:CORR:COLL:{code} 1"
-            self.s.write(cmd)
-            print(self.opc)  # wait for operation complete
-
-        self.s.write("SENS:CORR:COLL:METH:SOLT1 1")
-        self.s.write("SENS:CORR:COLL:SAVE")
-
-    def get_cal_coefs(self):
-        standards = ['open', 'short', 'load']
-        osl_coefs = dict()
-        for standard in standards:
-            print(f'connect {standard} and press enter.')
-            input()
-            cmd = f'sens:corr:coll:{standard} 1'
-            self.s.write(cmd)
-            cmd_get_coefs = f"sens1:corr:coll:data:{standard} 1"
-            coef = self.s.query_ascii_values(cmd_get_coefs, container=np.array)
-            osl_coefs[standard] = coef
-        return osl_coefs
-
-    def setup_S11(
-        self, fstart=1e6, fstop=250e6, npoints=1000, ifbw=100, power_dBm=0
-    ):
+    def setup(self, fstart=1e6, fstop=250e6, npoints=1000, ifbw=100, power_dBm=0):
         """
-        Setup S11 measurement
+        Setup S11 measurement.
 
         Parameters
         ----------
@@ -69,47 +43,62 @@ class VNA:
             Power level in dBm
 
         """
-        values = []
-        self.s.write_ascii_values(
-            "CALC:FORM SCOM\n", values
+        self.s.write(
+            "FORM:DATA REAL\n"
+        )  # get data as 64-bit binary values
+        self.s.write(
+            "CALC:FORM SCOM\n"
         )  # get s11 as real and imag
-        self.s.write_ascii_values(
-            f"SOUR:POW {power_dBm}\n", values
+        self.s.write(
+            f"SOUR:POW {power_dBm}\n"
         )  # power level
-        self.s.write_ascii_values(
-            "SENS:AVER:COUN 1\n", values
+        self.s.write(
+            "SENS1:AVER:COUN 1\n"
         )  # number of averages
-        self.s.write_ascii_values(f"SENS:FREQ:STAR {fstart} HZ\n", values)
-        self.s.write_ascii_values(f"SENS:FREQ:STOP {fstop} HZ\n", values)
-        self.s.write_ascii_values(f"SENS:SWE:POIN {npoints}\n", values)
-        self.s.write_ascii_values(f"SENS:BWID {ifbw} HZ\n", values)
-        self.s.write_ascii_values("TRIG:SOUR BUS\n", values)
-        return self.opc
+        self.s.write(
+            "SWE:TYPE LIN\n"
+        ) #linear sweep instead of point by point
+        self.s.write(f"SENS1:FREQ:STAR {fstart} HZ\n")
+        self.s.write(f"SENS1:FREQ:STOP {fstop} HZ\n")
+        self.s.write(f"SENS1:SWE:POIN {npoints}\n")
+        self.s.write(f"SENS1:BWID {ifbw} HZ\n")
+        self.s.write("TRIG:SOUR BUS\n")
+        freq = self.s.query_binary_values('SENS1:FREQ:DATA?', container=np.array, is_big_endian=True, datatype='d')
+        freq = [float(i) for i in freq]
+        return freq
 
-    def measure_S11(self):
-        """
-        Measure S11 parameter and save CSV file
+    def measure_S11(self, verbose = False):
+        '''
+        Get S11 measurement. Can be used for standards and antenna measurements. 
 
-        Returns
-        -------
-        freq : np.array
-            Frequency points in MHz
-        s11 : np.array
-            Complex-valued S11 parameter in dB
+        verbose : boolean (Default = False).
+             If true, prints time it took for sweep.
 
-        """
-        values = []
-        self.s.write_ascii_values("TRIG:SEQ:SING\n", values)
-        if self.opc:
-            print("Measurement complete")
+        Returns : numpy array of complex S11 measurement.
+        '''
+        t0 = time.time()
+        self.s.write('TRIG:SEQ:SING')
+        if self.opc and verbose: #check if the sweep is done before proceeding
+             print('swept')
+        data = self.s.query_binary_values('CALC:TRAC:DATA:FDAT?', container=np.array, is_big_endian=True, datatype='d')#query the values
+        if self.opc and verbose: #if verbose and the query is done, print time
+             print(f'{time.time() - t0 : .2f} seconds to sweep.')
+        data = np.array([float(i) for i in data]) #change to complex floats
+        data = data[0::2] + 1j * data[1::2]
+        return data
 
-        # get frequencies
-        freq = self.s.query("SENS:FREQ:DATA?\n").split(",")
-        freq = np.array([float(f) / 1e6 for f in freq])
+    def calibrate_OSL(self):
+        '''
+        Iterate through standards for measurement.
 
-        # get s11
-        s11 = self.s.query("CALC:TRAC:DATA:FDAT?\n").split(",")
-        s11 = np.array([float(s) for s in s11])
-        s11 = s11[0::2] + 1j * s11[1::2]  # convert to complex
-
-        return freq, s11
+        Returns : dictionary with keys 'open', 'short', 'load'.
+        '''
+        standards = ['open', 'short', 'load'] #set osl standard list
+        osl_data = dict()
+        #iterate through standards, take data and add to dictionary
+        for standard in standards:
+             print(f'connect {standard} and press enter')
+             input()
+             data = self.measure_S11()
+             osl_data[standard] = data
+        return osl_data
