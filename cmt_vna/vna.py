@@ -36,6 +36,19 @@ class VNA:
         self.s.write("SENS:CORR:COLL:METH:SOLT1 1")
         self.s.write("SENS:CORR:COLL:SAVE")
 
+    def get_cal_coefs(self):
+        standards = ['open', 'short', 'load']
+        osl_coefs = dict()
+        for standard in standards:
+            print(f'connect {standard} and press enter.')
+            input()
+            cmd = f'sens:corr:coll:{standard} 1'
+            self.s.write(cmd)
+            cmd_get_coefs = f"sens1:corr:coll:data:{standard} 1"
+            coef = self.s.query_ascii_values(cmd_get_coefs, container=np.array)
+            osl_coefs[standard] = coef
+        return osl_coefs
+
     def setup_S11(
         self, fstart=1e6, fstop=250e6, npoints=1000, ifbw=100, power_dBm=0
     ):
