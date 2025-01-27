@@ -5,10 +5,12 @@ import os
 import time
 import matplotlib
 from datetime import datetime
+from cmt_vna import S911T
+from mistdata import cal_s11 as cal
 import warnings
 warnings.filterwarnings('ignore')
 
-def calibrate(cal_file, s11):
+def calibrate(cal_file, calkit, s11):
     """
     Calibrate the s11 data we're plotting.
 
@@ -19,9 +21,19 @@ def calibrate(cal_file, s11):
     Returns:
         np.array: Calibrated data.
     """
-    #TODO: Write this function lol. Need to get Christian's branch of mistdata in the stack.
+    osl_data = np.load(cal_file)
+    open_data = osl_data['open']
+    shor_data = osl_data['short']
+    load_data = osl_data['load']
+    gamma_measured = np.vstack([open_data, shor_data, load_data])
 
-def load_npz_data(filename, cal_file=None):
+    gamma_true = calkit.std_gamma
+
+    sparams = cal.network_sparams(gamma_true, gamma_measured)
+    gamma_prime = cal.embed_sparams(sparams, s11)
+    return gamma_prime    
+
+def load_npz_data(filename, cal_file=None, calkit=None):
     """
     Load data from a .npz file.
 
@@ -35,8 +47,7 @@ def load_npz_data(filename, cal_file=None):
     try:
         data = np.load(filename)['s11']
         if cal_file:
-            #TODO: write calibration function in this script with mistdata functions
-             return None
+            data = calibrate(cal_file, calkit, s11)
         return data
     except:
         print('Unable to load file. Returning None')
@@ -54,7 +65,8 @@ def live_plot(freq, s11_file, live_dir, output_filename, cal_file=None):
         cal_file (None or str): If none, it will plot raw S11.
     """
     if cal_file:
-        s11_data = load_npz_data(s11_file, cal_file=cal_file)
+        calkit = S911T(freq_Hz=freq) #initialize calkit object here, pass to load_npz_data
+        s11_data = load_npz_data(s11_file, cal_file=cal_file, calkit=calkit)
     else:
         s11_data = load_npz_data(s11_file)
     plt.ion()  # Enable interactive mode

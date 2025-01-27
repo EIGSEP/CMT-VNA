@@ -43,3 +43,11 @@ class S911T(CalKit):
         self.add_open(c_open, open_loss, open_delay)
         self.add_short(l_short, short_loss, short_delay)
         self.load = BasicLoadStandard(load)
+
+    @property
+    def std_gamma(self):
+        open_gamma = self.open.gamma
+        shor_gamma = self.short.gamma
+        load_gamma = self.load.gamma
+        gamma = np.vstack([open_gamma, shor_gamma, load_gamma])
+        return gamma
