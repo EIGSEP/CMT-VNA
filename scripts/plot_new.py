@@ -53,7 +53,7 @@ def load_npz_data(filename, cal_file=None, calkit=None):
         print('Unable to load file. Returning None')
         return None
 
-def live_plot(freq, s11_file, live_dir, output_filename, cal_file=None):
+def live_plot(freq, s11_file, live_dir, output_filename, cal_file=None, calkit=None):
     """
     Continuously check a directory for new .npz files and plot new data on top of the existing plot.
 
@@ -62,10 +62,10 @@ def live_plot(freq, s11_file, live_dir, output_filename, cal_file=None):
         s11_data (str): Initial S11 file.
         live_dir (str): Directory to watch for new .npz files.
         output_filename (str): File to which the plot figure will be saved.
-        cal_file (None or str): If none, it will plot raw S11.
+        cal_file (None or str): If none, it will plot raw S11. (optional)
+        calkit (None or S911T object): Used to calibrate out VNA response. (optional)
     """
     if cal_file:
-        calkit = S911T(freq_Hz=freq) #initialize calkit object here, pass to load_npz_data
         s11_data = load_npz_data(s11_file, cal_file=cal_file, calkit=calkit)
     else:
         s11_data = load_npz_data(s11_file)
@@ -88,7 +88,7 @@ def live_plot(freq, s11_file, live_dir, output_filename, cal_file=None):
                 time.sleep(1)
                 for i in new_files:
                     if cal_file:
-                        s11_data = load_npz_data(i, cal_file=cal_file)
+                        s11_new = load_npz_data(i, cal_file=cal_file, calkit=calkit)
                     else:
                         s11_new = load_npz_data(i) 
                     ax.plot(freq, 20*np.log10(np.abs(s11_new)), label=f"S11 ({i[-19:-4]})", alpha=0.7)
@@ -109,16 +109,15 @@ def main():
     parser.add_argument("--cal", default=False, action="store_true", help="If True, will automatically calibrate s11 data before plotting. Default is False.")
     args = parser.parse_args()
 
-    # Load data from the provided files
-    try:
-        freq_file = max(os.listdir(f'{args.live}/freqs'))
-    except:
-        print('no frequency file to pull from. exiting')
-        return
-    freq = np.load(os.path.join(f'{args.live}/freqs', freq_file))['freq']
+    freq_file = os.path.join(f'{args.live}/freqs', max(os.listdir(f'{args.live}/freqs'))) #get most recent frequency file
+
+    #grab frequencies, cal_file, setup calkit
+    freq = np.load(freq_file)['freq']
+    cal_file = os.path.join(f'{args.live}/freqs',max(os.listdir(f'{args.live}/cals'))
+    calkit = S911T(freq_Hz=freq)
 
     if args.cal:
-        live_plot(freq, args.s11, args.live, args.output, max(os.listdir(f'{args.live}/cals')))
+        live_plot(freq, args.s11, args.live, args.output, cal_file=cal_file, calkit=calkit) #most recent cal file
     else:
         live_plot(freq, args.s11, args.live, args.output)
 
