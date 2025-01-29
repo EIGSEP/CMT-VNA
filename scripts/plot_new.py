@@ -44,8 +44,10 @@ def load_npz_data(filename, cal_file=None, calkit=None):
     Returns:
         numpy.lib.npyio.NpzFile: The loaded data object, or None if loading fails.
     """
+    
     try:
         data = np.load(filename)['s11']
+        
         if cal_file:
             data = calibrate(cal_file, calkit, s11)
         return data
@@ -113,10 +115,16 @@ def main():
 
     #grab frequencies, cal_file, setup calkit
     freq = np.load(freq_file)['freq']
-    cal_file = os.path.join(f'{args.live}/freqs',max(os.listdir(f'{args.live}/cals'))
-    calkit = S911T(freq_Hz=freq)
 
     if args.cal:
+        calkit = S911T(freq_Hz=freq)
+        if len(os.listdir(f'{args.live}/cals')) > 0:
+            cal_file = os.path.join(f'{args.live}/cals',max(os.listdir(f'{args.live}/cals')))
+        else: 
+            print('no osl standards recorded here. Type the path to an existing calibration file.') 
+            cal_dir = input()
+            cal_file = os.path.join(cal_dir, max(os.listdir(cal_dir)))
+
         live_plot(freq, args.s11, args.live, args.output, cal_file=cal_file, calkit=calkit) #most recent cal file
     else:
         live_plot(freq, args.s11, args.live, args.output)
