@@ -77,7 +77,7 @@ def live_plot(freq, s11_file, live_dir, output_filename, cal_file=None, calkit=N
 
     ax.set_xlabel("Frequency")
     ax.set_ylabel("Data")
-    ax.set_title("S11 Data")
+    ax.set_title(f"{live_dir} live data")
     ax.grid(True)
     plt.tight_layout()
     
