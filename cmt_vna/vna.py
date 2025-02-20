@@ -8,11 +8,11 @@ PORT = 5025
 
 class VNA:
 
-    def __init__(self, ip=IP, port=PORT):
+    def __init__(self, to=100000, ip=IP, port=PORT):
         self.rm = pyvisa.ResourceManager("@py")
         self.s = self.rm.open_resource(f"TCPIP::{ip}::{port}::SOCKET")
         self.s.read_termination = "\n"
-        self.s.timeout = 100000
+        self.s.timeout = to
 
     @property
     def id(self):
