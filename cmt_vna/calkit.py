@@ -51,9 +51,3 @@ class S911T(CalKit):
         load_gamma = self.load.gamma
         gamma = np.vstack([open_gamma, shor_gamma, load_gamma])
         return gamma
-
-    def get_sparams(model_stds, cal_file):
-        osl = np.load(cal_file)
-        gamma_measured = np.vstack([osl['open'], osl['short'], osl['load']])
-        sparams = cal_s11.network_sparams(model_stds, gamma_measured)
-        return gamma_prime
