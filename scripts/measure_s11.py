@@ -55,14 +55,11 @@ freq = vna.setup(
     power_dBm=args.power,
 )
 
-date = datetime.now().strftime("%Y%m%d_%H%M%S")
-np.savez(f"{args.outdir}/freqs/{date}_freqs.npz", freq=freq)
-
 if args.cal:
     OSL = vna.calibrate_OSL()
     date = datetime.now().strftime("%Y%m%d_%H%M%S")
     #save calibration data
-    np.savez(f"{args.outdir}/cals/{date}_calibration.npz", open=OSL['open'], short=OSL['short'], load=OSL['load'])
+    np.savez(f"{args.outdir}/cals/{date}_calibration.npz", open=OSL['open'], short=OSL['short'], load=OSL['load'], freqs= freq)
     print("Calibration complete.")
     print("Connect DUT and hit enter")
     input()
@@ -70,9 +67,9 @@ if args.cal:
 i = 0
 while i < args.max_files:
     try:
-        s11 = vna.measure_S11(verbose=True)
+        gamma = vna.measure_S11(verbose=True)
         date = datetime.now().strftime("%Y%m%d_%H%M%S")
-        np.savez(f"{args.outdir}/{date}.npz", s11=s11)
+        np.savez(f"{args.outdir}/{date}.npz", gamma=gamma, freqs = freq)
         i += 1
         time.sleep(args.cadence)
     except KeyboardInterrupt:
