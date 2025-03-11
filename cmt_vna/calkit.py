@@ -52,10 +52,13 @@ class S911T(CalKit):
         gamma = np.vstack([open_gamma, shor_gamma, load_gamma])
         return gamma
 
-    def calibrate(self, cal_file, s11):
-        gamma_true = self.std_gamma
-        osl = np.load(cal_file)
-        gamma_measured = np.vstack([osl['open'], osl['short'], osl['load']])
-        sparams = cal_s11.network_sparams(gamma_true, gamma_measured)
-        gamma_prime = cal_s11.embed_sparams(sparams, s11)
-        return gamma_prime
+	def sparams(self, stds_file, model=None):
+		'''
+		Takes in a standards measurement and model and returns a s-matrix.
+		'''
+		if not model:
+			model = self.std_gamma #get model standards if none are provided
+		osl = np.load(stds_file)
+		stds_meas = np.vstack([osl['open'], osl['short'], osl['load']])
+		sparams = cal.network_sparams(model, stds_meas)
+		return sparams
