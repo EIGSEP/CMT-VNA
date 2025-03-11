@@ -51,8 +51,6 @@ class S911T(CalKit):
         load_gamma = self.load.gamma
         gamma = np.vstack([open_gamma, shor_gamma, load_gamma])
         return gamma
-<<<<<<< HEAD
-=======
 
 	def sparams(self, stds_file, model=None):
 		'''
@@ -64,4 +62,3 @@ class S911T(CalKit):
 		stds_meas = np.vstack([osl['open'], osl['short'], osl['load']])
 		sparams = cal.network_sparams(model, stds_meas)
 		return sparams
->>>>>>> bf67986e7c1f595d009cb5bed08d5a1d1eb78700
