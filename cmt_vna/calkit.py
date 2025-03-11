@@ -52,13 +52,13 @@ class S911T(CalKit):
         gamma = np.vstack([open_gamma, shor_gamma, load_gamma])
         return gamma
 
-	def sparams(self, stds_file, model=None):
-		'''
-		Takes in a standards measurement and model and returns a s-matrix.
-		'''
-		if not model:
-			model = self.std_gamma #get model standards if none are provided
-		osl = np.load(stds_file)
-		stds_meas = np.vstack([osl['open'], osl['short'], osl['load']])
-		sparams = cal.network_sparams(model, stds_meas)
-		return sparams
+    def sparams(self, stds_file, model=None):
+        '''
+        Takes in a standards measurement and model and returns a s-matrix.
+        '''
+        if not model:
+            model = self.std_gamma #get model standards if none are provided
+        osl = np.load(stds_file)
+        stds_meas = np.vstack([osl['open'], osl['short'], osl['load']])
+        sparams = cal.network_sparams(model, stds_meas)
+        return sparams

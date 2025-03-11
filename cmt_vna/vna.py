@@ -1,8 +1,10 @@
 import numpy as np
 import pyvisa
 import time
-from calkit import S911T
+from datetime import datetime
+from .calkit import S911T
 import mistdata.cal_s11 as cal
+
 IP = "127.0.0.1"
 PORT = 5025
 
@@ -104,22 +106,10 @@ class VNA:
              osl_data[standard] = data
         return osl_data
 
-	def set_sparams(self, freq, stds_file):
-		'''
-		Takes in a frequency array and a file with the standards measurement at the end of the vna.
-		'''
-		kit = S911T(freq_Hz=freq)
-		params = kit.params(stds_file=stds_file)
-		self.sparams = params
-
-
-	def plot_data(self,fig, axis, freq, gamma, plot_mode='dB'):
-		modes = {
-					'dB': 20*np.log10(gamma),
-					'linear': gamma
-				}
-		data = modes[plot_mode]
-		axis.plot(freq, data, label=datetime.now().strftime("%m/%d, %H:%M:%S"))
-		fig.canvas.draw()
-		fig.canvas.flush_events()
-		ax.legend()
+    def set_sparams(self, freq, stds_file):
+        '''
+        Takes in a frequency array and a file with the standards measurement at the end of the vna.
+        '''
+        kit = S911T(freq_Hz=freq)
+        params = kit.params(stds_file=stds_file)
+        self.sparams = params
