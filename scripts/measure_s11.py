@@ -67,27 +67,26 @@ if args.cal:
     print("Calibration complete.")
     print("Connect DUT and hit enter")
     input()
+
+def on_close(event):
+	i = args.maxfiles
+
 if args.plot:
-    fig = plt.figure()
+	plt.ion()
+	fig, ax = plt.subplots(1,1)
+	fig.canvas.mpl_connect('close_event', on_close)
+
 i = 0
 while i < args.max_files:
     try:
-<<<<<<< HEAD
         gamma = vna.measure_S11(verbose=True)
-=======
-        s11 = vna.measure_S11(verbose=True)
-        if args.plot:
-            plt.plot(freq, 20*np.log10(np.abs(s11)))
->>>>>>> bf67986e7c1f595d009cb5bed08d5a1d1eb78700
         date = datetime.now().strftime("%Y%m%d_%H%M%S")
         np.savez(f"{args.outdir}/{date}.npz", gamma=gamma, freqs = freq)
         i += 1
+
+		if args.plot:
+			vna.plot_data(fig=fig, axis=ax, freq=freq, gamma=gamma)
+ 
         time.sleep(args.cadence)
     except KeyboardInterrupt:
         break
-
-if args.plot:
-    plt.xlabel('Freqs (Hz)')
-    plt.ylabel('Power Gain (dB)')
-    plt.grid()
-    plt.show()
