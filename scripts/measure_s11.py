@@ -3,7 +3,7 @@ from datetime import datetime
 import numpy as np
 import time
 from cmt_vna import VNA
-
+import matplotlib.pyplot as plt
 parser = ArgumentParser(
     description="Measure S11 of a DUT connected to a VNA.",
     formatter_class=ArgumentDefaultsHelpFormatter,
@@ -11,6 +11,10 @@ parser = ArgumentParser(
 parser.add_argument(
     "--cal", default=False, action='store_true', help="Perform calibration."
 )
+parser.add_argument(
+    "--plot", default=False, action='store_true', help="Plot."
+)
+
 parser.add_argument(
     "--fstart", type=float, default=1e6, help="Start frequency in Hz."
 )
@@ -63,14 +67,27 @@ if args.cal:
     print("Calibration complete.")
     print("Connect DUT and hit enter")
     input()
-
+if args.plot:
+    fig = plt.figure()
 i = 0
 while i < args.max_files:
     try:
+<<<<<<< HEAD
         gamma = vna.measure_S11(verbose=True)
+=======
+        s11 = vna.measure_S11(verbose=True)
+        if args.plot:
+            plt.plot(freq, 20*np.log10(np.abs(s11)))
+>>>>>>> bf67986e7c1f595d009cb5bed08d5a1d1eb78700
         date = datetime.now().strftime("%Y%m%d_%H%M%S")
         np.savez(f"{args.outdir}/{date}.npz", gamma=gamma, freqs = freq)
         i += 1
         time.sleep(args.cadence)
     except KeyboardInterrupt:
         break
+
+if args.plot:
+    plt.xlabel('Freqs (Hz)')
+    plt.ylabel('Power Gain (dB)')
+    plt.grid()
+    plt.show()

@@ -1,7 +1,8 @@
 import numpy as np
 import pyvisa
 import time
-
+from calkit import S911T
+import mistdata.cal_s11 as cal
 IP = "127.0.0.1"
 PORT = 5025
 
@@ -102,3 +103,9 @@ class VNA:
              data = self.measure_S11()
              osl_data[standard] = data
         return osl_data
+
+	def set_sparams(self, freq, stds):
+		kit = S911T(freq_Hz=freq)
+		params = kit.sparams(stds)
+		self.sparams = params
+		return None 
