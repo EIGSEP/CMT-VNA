@@ -3,7 +3,11 @@ from datetime import datetime
 import numpy as np
 import time
 from cmt_vna import VNA
+from cmt_vna import S911T
 import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings('ignore')
+
 parser = ArgumentParser(
     description="Measure S11 of a DUT connected to a VNA.",
     formatter_class=ArgumentDefaultsHelpFormatter,
@@ -69,12 +73,12 @@ if args.cal:
     input()
 
 def on_close(event):
-	i = args.maxfiles
+	i = args.max_files
 
 if args.plot:
-	plt.ion()
-	fig, ax = plt.subplots(1,1)
-	fig.canvas.mpl_connect('close_event', on_close)
+    plt.ion()
+    fig, ax = plt.subplots(1,1)
+    fig.canvas.mpl_connect('close_event', on_close)
 
 i = 0
 while i < args.max_files:
@@ -84,8 +88,11 @@ while i < args.max_files:
         np.savez(f"{args.outdir}/{date}.npz", gamma=gamma, freqs = freq)
         i += 1
 
-		if args.plot:
-			vna.plot_data(fig=fig, axis=ax, freq=freq, gamma=gamma)
+        if args.plot:
+            ax.plot(freq, 20*np.log10(gamma), label=datetime.now().strftime("%m/%d, %H:%M:%S"))
+            ax.legend()
+            fig.canvas.draw()
+            fig.canvas.flush_events()
  
         time.sleep(args.cadence)
     except KeyboardInterrupt:
