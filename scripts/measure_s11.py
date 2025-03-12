@@ -13,8 +13,12 @@ parser = ArgumentParser(
     formatter_class=ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
-    "--cal", default=False, action='store_true', help="Perform calibration."
+    "--osl", default=False, action='store_true', help="Perform calibration measurement."
 )
+parser.add_argument(
+    "--cal", default=None, help="File with which to calibrate."
+)
+
 parser.add_argument(
     "--plot", default=False, action='store_true', help="Plot."
 )
@@ -63,7 +67,7 @@ freq = vna.setup(
     power_dBm=args.power,
 )
 
-if args.cal:
+if args.osl:
     OSL = vna.calibrate_OSL()
     date = datetime.now().strftime("%Y%m%d_%H%M%S")
     #save calibration data
@@ -86,7 +90,10 @@ while i < args.max_files:
         date = datetime.now().strftime("%Y%m%d_%H%M%S")
         np.savez(f"{args.outdir}/{date}.npz", gamma=gamma, freqs = freq)
         i += 1
-
+        if args.cal:
+            vna.add_sparams(freq, args.cal)
+            sprms = vna.sparams
+            gamma = cal.de_embed_sparams(sparams=sprms, gamma_prime=gamma)
         if args.plot:
             ax.plot(freq, 20*np.log10(gamma), label=datetime.now().strftime("%m/%d, %H:%M:%S"))
             ax.legend()
