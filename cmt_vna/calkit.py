@@ -24,13 +24,13 @@ class S911T(CalKit):
         Z0 = 50
 
         #open standard 
-        c_coefs = (-7.425E-15, 2470E-27, -226E-36, 6.18E-45)
+        c_coefs = ( 6.18E-45,-226E-36, 2470E-27,-7.425E-15)
         c_open = np.polyval(c_coefs, freq_Hz)
         open_delay = 30.821E-12 #s
         open_loss = 2E9 #Ohm/s
 
         #short standard
-        l_coefs = (27.98E-12, -5010E-24, 303.8E-33, -6.13E-42)
+        l_coefs = (-6.13E-42,303.8E-33, -5010E-24, 27.98E-12)
         l_short = np.polyval(l_coefs, freq_Hz)
         short_delay = 30.688E-12 #s
         short_loss = 2E9 #Ohm/s
@@ -52,13 +52,11 @@ class S911T(CalKit):
         gamma = np.vstack([open_gamma, shor_gamma, load_gamma])
         return gamma
 
-    def sparams(self, stds_file, model=None):
+    def sparams(self, stds_meas, model=None):
         '''
         Takes in a standards measurement and model and returns a s-matrix.
         '''
         if not model:
             model = self.std_gamma #get model standards if none are provided
-        osl = np.load(stds_file)
-        stds_meas = np.vstack([osl['open'], osl['short'], osl['load']])
-        sparams = cal.network_sparams(model, stds_meas)
+        sparams = cal_s11.network_sparams(model, stds_meas)
         return sparams

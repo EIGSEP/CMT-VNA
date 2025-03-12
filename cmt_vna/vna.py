@@ -106,10 +106,12 @@ class VNA:
              osl_data[standard] = data
         return osl_data
 
-    def set_sparams(self, freq, stds_file):
+    def add_sparams(self, freq, stds_file):
         '''
         Takes in a frequency array and a file with the standards measurement at the end of the vna.
         '''
         kit = S911T(freq_Hz=freq)
-        params = kit.params(stds_file=stds_file)
+        osl = np.load(stds_file)
+        stds_meas = np.vstack([osl['open'], osl['short'], osl['load']])
+        params = kit.params(stds_meas=stds_meas)
         self.sparams = params
