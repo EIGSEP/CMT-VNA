@@ -72,13 +72,12 @@ if args.cal:
     print("Connect DUT and hit enter")
     input()
 
-def on_close(event):
-	i = args.max_files
+#def on_close(event):
+#	i = args.max_files + 1
 
 if args.plot:
     plt.ion()
     fig, ax = plt.subplots(1,1)
-    fig.canvas.mpl_connect('close_event', on_close)
 
 i = 0
 while i < args.max_files:
@@ -97,3 +96,4 @@ while i < args.max_files:
         time.sleep(args.cadence)
     except KeyboardInterrupt:
         break
+fig.savefig(f'{args.outdir}/{date}.png')
