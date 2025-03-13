@@ -5,6 +5,7 @@ import time
 from cmt_vna import VNA
 from cmt_vna import S911T
 import matplotlib.pyplot as plt
+import mistdata.cal_s11 as cal
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -91,7 +92,7 @@ while i < args.max_files:
         np.savez(f"{args.outdir}/{date}.npz", gamma=gamma, freqs = freq)
         i += 1
         if args.cal:
-            vna.add_sparams(freq, args.cal)
+            vna.add_sparams(np.array(freq), args.cal)
             sprms = vna.sparams
             gamma = cal.de_embed_sparams(sparams=sprms, gamma_prime=gamma)
         if args.plot:
