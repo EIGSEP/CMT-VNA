@@ -113,5 +113,5 @@ class VNA:
         kit = S911T(freq_Hz=freq)
         osl = np.load(stds_file)
         stds_meas = np.vstack([osl['open'], osl['short'], osl['load']])
-        params = kit.params(stds_meas=stds_meas)
+        params = kit.sparams(stds_meas=stds_meas)
         self.sparams = params
