@@ -72,17 +72,23 @@ if args.osl:
     OSL = vna.calibrate_OSL()
     date = datetime.now().strftime("%Y%m%d_%H%M%S")
     #save calibration data
-    np.savez(f"{args.outdir}/cals/{date}_calibration.npz", open=OSL['open'], short=OSL['short'], load=OSL['load'], freqs= freq)
+
+    cal_file=f"{args.outdir}/cals/{date}_calibration.npz" 
+    np.savez(cal_file, open=OSL['open'], short=OSL['short'], load=OSL['load'], freqs= freq)
+    vna.add_sparams(np.array(freq), cal_file)
+    sprms = vna.sparams
+
     print("Calibration complete.")
     print("Connect DUT and hit enter")
     input()
 
-#def on_close(event):
-#	i = args.max_files + 1
-
 if args.plot:
     plt.ion()
     fig, ax = plt.subplots(1,1)
+if args.cal:
+    cal_file = args.cal
+    vna.add_sparams(np.array(freq), cal_file)
+    sprms = vna.sparams
 
 i = 0
 while i < args.max_files:
@@ -91,12 +97,12 @@ while i < args.max_files:
         date = datetime.now().strftime("%Y%m%d_%H%M%S")
         np.savez(f"{args.outdir}/{date}.npz", gamma=gamma, freqs = freq)
         i += 1
-        if args.cal:
-            vna.add_sparams(np.array(freq), args.cal)
-            sprms = vna.sparams
+        if args.cal or args.osl: 
             gamma = cal.de_embed_sparams(sparams=sprms, gamma_prime=gamma)
+            np.savez(f"{args.outdir}/{date}_calibrated.npz", gamma=gamma, freqs = freq)
+                 
         if args.plot:
-            ax.plot(freq, 20*np.log10(gamma), label=datetime.now().strftime("%m/%d, %H:%M:%S"))
+            ax.plot(freq, gamma, label=datetime.now().strftime("%m/%d, %H:%M:%S"))
             ax.legend()
             fig.canvas.draw()
             fig.canvas.flush_events()
