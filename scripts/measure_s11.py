@@ -76,7 +76,6 @@ if args.osl: #measures standards, saves them, uses them to calibrate meas
     cal_file=f"{args.outdir}/cals/{date}_calibration.npz" 
     np.savez(cal_file, open=OSL['open'], short=OSL['short'], load=OSL['load'], freqs= freq)
     vna.add_sparams(np.array(freq), cal_file) #adds sprms to vna object
-    sprms = vna.sparams
 
     print("Calibration complete.")
     print("Connect DUT and hit enter")
@@ -88,7 +87,6 @@ if args.plot: #plots
 if args.cal:
     cal_file = args.cal
     vna.add_sparams(np.array(freq), cal_file)
-    sprms = vna.sparams
 
 i = 0
 while i < args.max_files:
@@ -98,7 +96,7 @@ while i < args.max_files:
         np.savez(f"{args.outdir}/{date}.npz", gamma=gamma, freqs = freq)
         i += 1
         if args.cal or args.osl: #calibrates 
-            gamma = cal.de_embed_sparams(sparams=sprms, gamma_prime=gamma)
+            gamma = vna.de_embed(gamma_meas=gamma)
                  
         if args.plot:
             ax.plot(freq, gamma, label=datetime.now().strftime("%m/%d, %H:%M:%S"))
