@@ -54,7 +54,15 @@ class S911T(CalKit):
 
     def sparams(self, stds_meas, model=None):
         '''
-        Takes in a standards measurement and model and returns a s-matrix.
+        Returns a scattering matrix based on measured and model standards.
+        IN
+        stds_meas : np.array (3, N)
+            The standards reflection coefficients measured at the desired reference plane.
+        model : np.array (3,N) or None
+            If none, the model reflection coefficient given by Copper Mountain is used.
+        OUT
+        np.array (3,N)
+            (S11, S12*S21, S22) s matrix.
         '''
         if not model:
             model = self.std_gamma #get model standards if none are provided
