@@ -1,3 +1,5 @@
+'''Script just for me to get calibration data for messing around.'''
+
 import numpy as np
 from cmt_vna import VNA
 from datetime import datetime
