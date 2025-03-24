@@ -9,3 +9,5 @@ cmt_vna.egg-info/PKG-INFO
 cmt_vna.egg-info/SOURCES.txt
 cmt_vna.egg-info/dependency_links.txt
 cmt_vna.egg-info/top_level.txt
+tests/test_calkit.py
+tests/test_vna.py

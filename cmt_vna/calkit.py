@@ -24,13 +24,13 @@ class S911T(CalKit):
         Z0 = 50
 
         #open standard 
-        c_coefs = (-7.425E-15, 2470E-27, -226E-36, 6.18E-45)
+        c_coefs = ( 6.18E-45,-226E-36, 2470E-27,-7.425E-15)
         c_open = np.polyval(c_coefs, freq_Hz)
         open_delay = 30.821E-12 #s
         open_loss = 2E9 #Ohm/s
 
         #short standard
-        l_coefs = (27.98E-12, -5010E-24, 303.8E-33, -6.13E-42)
+        l_coefs = (-6.13E-42,303.8E-33, -5010E-24, 27.98E-12)
         l_short = np.polyval(l_coefs, freq_Hz)
         short_delay = 30.688E-12 #s
         short_loss = 2E9 #Ohm/s
@@ -52,10 +52,19 @@ class S911T(CalKit):
         gamma = np.vstack([open_gamma, shor_gamma, load_gamma])
         return gamma
 
-    def calibrate(self, cal_file, s11):
-        gamma_true = self.std_gamma
-        osl = np.load(cal_file)
-        gamma_measured = np.vstack([osl['open'], osl['short'], osl['load']])
-        sparams = cal_s11.network_sparams(gamma_true, gamma_measured)
-        gamma_prime = cal_s11.embed_sparams(sparams, s11)
-        return gamma_prime
+    def sparams(self, stds_meas, model=None):
+        '''
+        Returns a scattering matrix based on measured and model standards.
+        IN
+        stds_meas : np.array (3, N)
+            The standards reflection coefficients measured at the desired reference plane.
+        model : np.array (3,N) or None
+            If none, the model reflection coefficient given by Copper Mountain is used.
+        OUT
+        np.array (3,N)
+            (S11, S12*S21, S22) s matrix.
+        '''
+        if not model:
+            model = self.std_gamma #get model standards if none are provided
+        sparams = cal_s11.network_sparams(model, stds_meas)
+        return sparams

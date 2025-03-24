@@ -3,14 +3,27 @@ from datetime import datetime
 import numpy as np
 import time
 from cmt_vna import VNA
+from cmt_vna import S911T
+import matplotlib.pyplot as plt
+import mistdata.cal_s11 as cal
+import warnings
+warnings.filterwarnings('ignore')
 
 parser = ArgumentParser(
     description="Measure S11 of a DUT connected to a VNA.",
     formatter_class=ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
-    "--cal", default=False, action='store_true', help="Perform calibration."
+    "--osl", default=False, action='store_true', help="Perform calibration measurement."
 )
+parser.add_argument(
+    "--cal", default=None, help="File with which to calibrate."
+)
+
+parser.add_argument(
+    "--plot", default=False, action='store_true', help="Plot."
+)
+
 parser.add_argument(
     "--fstart", type=float, default=1e6, help="Start frequency in Hz."
 )
@@ -55,22 +68,43 @@ freq = vna.setup(
     power_dBm=args.power,
 )
 
-if args.cal:
+if args.osl: #measures standards, saves them, uses them to calibrate meas
     OSL = vna.calibrate_OSL()
     date = datetime.now().strftime("%Y%m%d_%H%M%S")
     #save calibration data
-    np.savez(f"{args.outdir}/cals/{date}_calibration.npz", open=OSL['open'], short=OSL['short'], load=OSL['load'], freqs= freq)
+
+    cal_file=f"{args.outdir}/cals/{date}_calibration.npz" 
+    np.savez(cal_file, open=OSL['open'], short=OSL['short'], load=OSL['load'], freqs= freq)
+    vna.add_sparams(np.array(freq), cal_file) #adds sprms to vna object
+
     print("Calibration complete.")
     print("Connect DUT and hit enter")
     input()
 
+if args.plot: #plots
+    plt.ion()
+    fig, ax = plt.subplots(1,1)
+if args.cal:
+    cal_file = args.cal
+    vna.add_sparams(np.array(freq), cal_file)
+
 i = 0
 while i < args.max_files:
     try:
-        gamma = vna.measure_S11(verbose=True)
+        gamma = vna.measure_S11()
         date = datetime.now().strftime("%Y%m%d_%H%M%S")
         np.savez(f"{args.outdir}/{date}.npz", gamma=gamma, freqs = freq)
         i += 1
+        if args.cal or args.osl: #calibrates 
+            gamma = vna.de_embed(gamma_meas=gamma)
+                 
+        if args.plot:
+            ax.plot(freq, gamma, label=datetime.now().strftime("%m/%d, %H:%M:%S"))
+            ax.legend()
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+ 
         time.sleep(args.cadence)
     except KeyboardInterrupt:
         break
+fig.savefig(f'{args.outdir}/{date}.png')

@@ -1,6 +1,9 @@
 import numpy as np
 import pyvisa
 import time
+from datetime import datetime
+from .calkit import S911T
+import mistdata.cal_s11 as cal
 
 IP = "127.0.0.1"
 PORT = 5025
@@ -102,3 +105,33 @@ class VNA:
              data = self.measure_S11()
              osl_data[standard] = data
         return osl_data
+
+    def add_sparams(self, stds_file, kit):
+        '''
+        Adds sparams attribute to the VNA object.
+        
+        IN
+        stds_file : str 
+            Filename for where the reflection coefficient measurements of each standard is written.
+        kit : calibration kit object
+            For now, it will be an S911T object, which inherits MIST's CalKit object.
+        '''
+        osl = np.load(stds_file)
+        stds_meas = np.vstack([osl['open'], osl['short'], osl['load']])
+        params = kit.sparams(stds_meas=stds_meas)
+        self.sparams = params
+
+    def de_embed(self, gamma_meas):
+        '''
+        de-embeds the vna's assigned sparams.
+        TODO: generalize to be able to de-embed incrementally. 
+        IN
+        gamma_meas : np.array (1, N)
+            Measured reflection coefficient to be calibrated.
+        OUT
+        np.array (1, N)
+            calibrated measurement.
+        '''
+        sprms = self.sparams
+        gamma_cal = cal.de_embed_sparams(sprms, gamma_meas)
+        return gamma_cal
