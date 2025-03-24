@@ -106,12 +106,32 @@ class VNA:
              osl_data[standard] = data
         return osl_data
 
-    def add_sparams(self, freq, stds_file):
+    def add_sparams(self, stds_file, kit):
         '''
-        Takes in a frequency array and a file with the standards measurement at the end of the vna.
+        Adds sparams attribute to the VNA object.
+        
+        IN
+        stds_file : str 
+            Filename for where the reflection coefficient measurements of each standard is written.
+        kit : calibration kit object
+            For now, it will be an S911T object, which inherits MIST's CalKit object.
         '''
-        kit = S911T(freq_Hz=freq)
         osl = np.load(stds_file)
         stds_meas = np.vstack([osl['open'], osl['short'], osl['load']])
         params = kit.sparams(stds_meas=stds_meas)
         self.sparams = params
+
+    def de_embed(self, gamma_meas):
+        '''
+        de-embeds the vna's assigned sparams.
+        TODO: generalize to be able to de-embed incrementally. 
+        IN
+        gamma_meas : np.array (1, N)
+            Measured reflection coefficient to be calibrated.
+        OUT
+        np.array (1, N)
+            calibrated measurement.
+        '''
+        sprms = self.sparams
+        gamma_cal = cal.de_embed_sparams(sprms, gamma_meas)
+        return gamma_cal
