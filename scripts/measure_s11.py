@@ -99,10 +99,10 @@ while i < args.max_files:
         i += 1
         if args.cal or args.osl: 
             gamma = cal.de_embed_sparams(sparams=sprms, gamma_prime=gamma)
-            np.savez(f"{args.outdir}/{date}_calibrated.npz", gamma=gamma, freqs = freq)
+#            np.savez(f"{args.outdir}/{date}_calibrated.npz", gamma=gamma, freqs = freq)
                  
         if args.plot:
-            ax.plot(freq, gamma, label=datetime.now().strftime("%m/%d, %H:%M:%S"))
+            ax.plot(freq, 20*np.log10(gamma), label=datetime.now().strftime("%m/%d, %H:%M:%S"))
             ax.legend()
             fig.canvas.draw()
             fig.canvas.flush_events()
@@ -111,3 +111,4 @@ while i < args.max_files:
     except KeyboardInterrupt:
         break
 fig.savefig(f'{args.outdir}/{date}.png')
+plt.show()
