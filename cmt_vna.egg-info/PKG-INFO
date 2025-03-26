@@ -1,7 +1,14 @@
-Metadata-Version: 2.2
-Name: cmt_vna
+Metadata-Version: 2.1
+Name: cmt-vna
 Version: 0.0.1
-Authors: Christian Hellum Bye, Charlie Glenn Tolley
-Author-email: chbye@berkeley.edu, tolley412@berkeley.edu
+Summary: UNKNOWN
+Home-page: UNKNOWN
+Author: Christian Hellum Bye
+Author-email: chbye@berkeley.edu
+License: UNKNOWN
+Platform: UNKNOWN
 Requires-Python: >=3.6
 License-File: LICENSE
+
+UNKNOWN
+

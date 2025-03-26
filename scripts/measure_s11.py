@@ -70,13 +70,13 @@ freq = vna.setup(
 
 if args.osl: #measures standards, saves them, uses them to calibrate meas
     OSL = vna.calibrate_OSL()
+    calkit = S911T(freq_Hz=np.array(freq))
     date = datetime.now().strftime("%Y%m%d_%H%M%S")
     #save calibration data
 
     cal_file=f"{args.outdir}/cals/{date}_calibration.npz" 
     np.savez(cal_file, open=OSL['open'], short=OSL['short'], load=OSL['load'], freqs= freq)
-    vna.add_sparams(np.array(freq), cal_file) #adds sprms to vna object
-
+    vna.add_sparams(stds_file=cal_file, kit=calkit)
     print("Calibration complete.")
     print("Connect DUT and hit enter")
     input()
@@ -85,8 +85,9 @@ if args.plot: #plots
     plt.ion()
     fig, ax = plt.subplots(1,1)
 if args.cal:
+    calkit = S911T(freq_Hz=np.array(freq))
     cal_file = args.cal
-    vna.add_sparams(np.array(freq), cal_file)
+    vna.add_sparams(stds_file=cal_file, kit=calkit)
 
 i = 0
 while i < args.max_files:
@@ -99,7 +100,9 @@ while i < args.max_files:
             gamma = vna.de_embed(gamma_meas=gamma)
                  
         if args.plot:
-            ax.plot(freq, gamma, label=datetime.now().strftime("%m/%d, %H:%M:%S"))
+            ax.set_xlabel('freqs [Hz]')
+            ax.set_ylabel('S11 [dB]')
+            ax.plot(freq, 20*np.log10(gamma), label=datetime.now().strftime("%m/%d, %H:%M:%S"))
             ax.legend()
             fig.canvas.draw()
             fig.canvas.flush_events()
