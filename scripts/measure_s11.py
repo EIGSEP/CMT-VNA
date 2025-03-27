@@ -19,11 +19,6 @@ parser.add_argument(
 parser.add_argument(
     "--cal", default=None, help="File with which to calibrate."
 )
-
-parser.add_argument(
-    "--plot", default=False, action='store_true', help="Plot."
-)
-
 parser.add_argument(
     "--fstart", type=float, default=1e6, help="Start frequency in Hz."
 )
@@ -54,60 +49,51 @@ parser.add_argument(
 parser.add_argument(
     "--outdir", type=str, default="/home/charlie/eigsep/CMT-VNA/data", help="Output directory."
 )
+parser.add_argument(
+    "-n", "--num_data",
+    type=int,
+    default=1,
+    help="Number of datasets to take each time.",
+)
 args = parser.parse_args()
 
 
-vna = VNA(ip="127.0.0.1", port=5025)
-print(f"Connected to {vna.id}.")
+i = 0
+while i < args.max_files:
+    vna = VNA(ip="127.0.0.1", port=5025)
+    print(f"Connected to {vna.id}.")
 
-freq = vna.setup(
-    fstart=args.fstart,
-    fstop=args.fstop,
-    npoints=args.npoints,
-    ifbw=args.ifbw,
-    power_dBm=args.power,
-)
+    freq = vna.setup(
+        fstart=args.fstart,
+        fstop=args.fstop,
+        npoints=args.npoints,
+        ifbw=args.ifbw,
+        power_dBm=args.power,
+    )
 
-if args.osl: #measures standards, saves them, uses them to calibrate meas
-    OSL = vna.calibrate_OSL()
-    calkit = S911T(freq_Hz=np.array(freq))
-    date = datetime.now().strftime("%Y%m%d_%H%M%S")
-    #save calibration data
+    if args.osl: #measures standards, saves them, uses them to calibrate meas
+        calkit = S911T(freq_Hz=freq)
+        vna.add_OSL()
+        vna.add_sparams(kit=calkit)
+    if args.cal:
+        calkit = S911T(freq_Hz=freq)
+        vna.from_file(args.cal)
+        vna.add_sparams(kit=calkit)
 
-    cal_file=f"{args.outdir}/cals/{date}_calibration.npz" 
-    np.savez(cal_file, open=OSL['open'], short=OSL['short'], load=OSL['load'], freqs= freq)
-    vna.add_sparams(stds_file=cal_file, kit=calkit)
     print("Calibration complete.")
     print("Connect DUT and hit enter")
     input()
 
-if args.plot: #plots
-    plt.ion()
-    fig, ax = plt.subplots(1,1)
-if args.cal:
-    calkit = S911T(freq_Hz=np.array(freq))
-    cal_file = args.cal
-    vna.add_sparams(stds_file=cal_file, kit=calkit)
-
-i = 0
-while i < args.max_files:
+    if not vna._running:
+        vna._running = True
     try:
-        gamma = vna.measure_S11()
-        date = datetime.now().strftime("%Y%m%d_%H%M%S")
-        np.savez(f"{args.outdir}/{date}.npz", gamma=gamma, freqs = freq)
-        i += 1
-        if args.cal or args.osl: #calibrates 
-            gamma = vna.de_embed(gamma_meas=gamma)
-                 
-        if args.plot:
-            ax.set_xlabel('freqs [Hz]')
-            ax.set_ylabel('S11 [dB]')
-            ax.plot(freq, 20*np.log10(gamma), label=datetime.now().strftime("%m/%d, %H:%M:%S"))
-            ax.legend()
-            fig.canvas.draw()
-            fig.canvas.flush_events()
- 
+        vna.read_data(num_data = args.num_data)
+        vna.write_data(outdir=args.outdir)
+        del vna 
         time.sleep(args.cadence)
     except KeyboardInterrupt:
+        vna.write_data(outdir=args.outdir)
         break
-fig.savefig(f'{args.outdir}/{date}.png')
+    finally:
+        i += 1
+        print('finished writing')
