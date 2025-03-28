@@ -17,9 +17,6 @@ parser.add_argument(
     "--osl", default=False, action='store_true', help="Perform calibration measurement."
 )
 parser.add_argument(
-    "--cal", default=None, help="File with which to calibrate."
-)
-parser.add_argument(
     "--fstart", type=float, default=1e6, help="Start frequency in Hz."
 )
 parser.add_argument(
@@ -56,40 +53,32 @@ parser.add_argument(
     help="Number of datasets to take each time.",
 )
 args = parser.parse_args()
+vna = VNA(ip="127.0.0.1", port=5025)
+print(f"Connected to {vna.id}.")
 
+freq = vna.setup(
+    fstart=args.fstart,
+    fstop=args.fstop,
+    npoints=args.npoints,
+    ifbw=args.ifbw,
+    power_dBm=args.power,
+)
 
 i = 0
 while i < args.max_files:
-    vna = VNA(ip="127.0.0.1", port=5025)
-    print(f"Connected to {vna.id}.")
-
-    freq = vna.setup(
-        fstart=args.fstart,
-        fstop=args.fstop,
-        npoints=args.npoints,
-        ifbw=args.ifbw,
-        power_dBm=args.power,
-    )
-
     if args.osl: #measures standards, saves them, uses them to calibrate meas
         calkit = S911T(freq_Hz=freq)
         vna.add_OSL()
-        vna.add_sparams(kit=calkit)
-    if args.cal:
-        calkit = S911T(freq_Hz=freq)
-        vna.from_file(args.cal)
-        vna.add_sparams(kit=calkit)
-
+    
     print("Calibration complete.")
     print("Connect DUT and hit enter")
     input()
 
-    if not vna._running:
-        vna._running = True
     try:
+        print('reading')
         vna.read_data(num_data = args.num_data)
+        print('done reading')
         vna.write_data(outdir=args.outdir)
-        del vna 
         time.sleep(args.cadence)
     except KeyboardInterrupt:
         vna.write_data(outdir=args.outdir)

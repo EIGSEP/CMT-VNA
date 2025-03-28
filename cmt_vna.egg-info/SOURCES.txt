@@ -4,6 +4,7 @@ setup.cfg
 setup.py
 cmt_vna/__init__.py
 cmt_vna/calkit.py
+cmt_vna/data.py
 cmt_vna/vna.py
 cmt_vna.egg-info/PKG-INFO
 cmt_vna.egg-info/SOURCES.txt

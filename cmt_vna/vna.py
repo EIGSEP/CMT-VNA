@@ -19,8 +19,6 @@ class VNA:
         self.s.read_termination = "\n"
         self.s.timeout = to
         self._clear_data()
-        self._running = False
-        self._thread = None
 
     @property
     def id(self):
@@ -125,52 +123,18 @@ class VNA:
         for key, d in OSL.items():
             self.data[key] = d
 
-
-    def add_sparams(self, kit):
-        '''
-        Adds sparams attribute to the VNA object.
-        '''
-        osl = self.data
-        stds_meas = np.vstack([osl['open'], osl['short'], osl['load']])
-        params = kit.sparams(stds_meas=stds_meas) #defaults to model standards
-        self.sparams = params
-
-    def de_embed(self, gamma_meas, sprms=None):
-        '''
-        de-embeds s-parameters from measurements. Default is to de-embed self.sparams. sprms_file can be a file path, sprms_network can be a (3,N) np array, both default to None.
-        '''
-        if sprms is None:
-            sprms = self.sparams
-        gamma_cal = cal.de_embed_sparams(sprms, gamma_meas)
-        return gamma_cal
-
     def read_data(self, num_data=1): 
         '''
         reads num_data s11s, adds them to self.data.
         '''
         i = 0
-        while i < num_data and self._running:
+        while i < num_data:
             i += 1 
             gamma = self.measure_S11()
             date = datetime.now().strftime("%Y%m%d_%H%M%S")
             self.data[date] = gamma
-        self._running = False
-
-    def start_recording(self, num_data):
-        self._running = True
-        self._thread = threading.Thread(target=self.read_data, args=(num_data,))
-        self._thread.daemon = True
-        self._thread.start()
- 
-    def end_recording(self):
-        try:
-            assert self._thread != None
-        except AssertionError:
-            return
-        self._running = False
-        self._thread.join()
-
-    def write_data(self, outdir): 
+    
+    def write_data(self, outdir): #vna
         '''
         writes all the data in self.data to an npz.
         '''
@@ -183,23 +147,3 @@ class VNA:
         np.savez(f'{outdir}/{date}.npz', **self.data) 
         self._clear_data()
 
-    def from_file(self, filename):
-        '''
-        Populates VNA data from a file that has been written.
-        '''
-        file = np.load(filename)
-        try:
-            data = dict(file)
-            keys = ['freqs', 'open', 'short', 'load']
-            assert all(x in list(data.keys()) for x in keys)
-        except AssertionError:
-            print('not all required keys are here for de_embedding. proceed? (y/n)')
-            decision = input()
-            if decision.lower() == 'n':
-                return
-            else:
-                print('writing to vna')
-        except Exception as e:
-            print(e)
-            return
-        self.data = data
