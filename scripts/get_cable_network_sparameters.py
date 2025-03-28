@@ -4,8 +4,8 @@ import numpy as np
 import time
 from cmt_vna import VNA
 from cmt_vna import S911T
+from cmt_vna import calkit as cal
 import matplotlib.pyplot as plt
-import mistdata.cal_s11 as cal
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -45,21 +45,28 @@ freq = vna.setup(
     power_dBm=args.power,
 )
 
-calkit = S911T(freq_Hz=freq)
-print('Measuring standards at the VNA port')
+calkit = S911T(freq_Hz = freq)
+model_stds = calkit.std_gamma
 
-vna.add_OSL() #adds osl standards to vna
-vna.add_sparams(kit=calkit) #adds s parameters to vna
+print('Measuring standards at the VNA port')
+OSL = vna.measure_OSL() #gets osl standards at vna
+OSL_arr = np.array([d for key, d in OSL.items()])
+
+#vna s parameters 
+vna_sprms = cal.network_sparameters(gamma_true=model_stds, gamma_meas=OSL_arr)
 
 print("Measuring at the top of the cable")
 OSL_cable = vna.measure_OSL()
+OSL_cable_arr = np.array([d for key, d in OSL_cable.items()])
 
 #De embed vna sparameters from the standards at the cable port
-OSL_cable_vna_port = np.array([vna.de_embed(gamma_meas=d) for key, d in OSL_cable.items()])
+OSL_cable_ref_vna = cal.de_embed_sparams(sparams=vna_sprms, gamma_prime=OSL_cable_arr)
 
 #compare the cable measurements with vna sprm de-embedded to the models
-cable_network_sprms = calkit.sparams(stds_meas = OSL_cable_vna_port)
+cable_nw_sprms = cal.network_sparams(gamma_true=model_stds, gamma_meas=OSL_cable_ref_vna)
 
-date= datetime.now().strftime("%Y%m%d_%H%M%S")
-np.savez(f'{args.outdir}/{date}_cable_sparameters.npz', sprms = cable_network_sprms)
+date = datetime.now().strftime('%Y%m%d_%H%M%S')
+np.savez(f'{outdir}/{date}_cable_new_sprms.npz',freqs=freq, sprms=cable_nw_sprms)
+np.savez(f'{outdir}/{date}_vna_stds.npz',**OSL)
+np.savez(f'{outdir}/{date}_cable_stds.npz', **OSL_cable) 
 

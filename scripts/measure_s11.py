@@ -5,7 +5,7 @@ import time
 from cmt_vna import VNA
 from cmt_vna import S911T
 import matplotlib.pyplot as plt
-import mistdata.cal_s11 as cal
+from cmt_vna import calkit as cal
 import warnings
 warnings.filterwarnings('ignore')
 
