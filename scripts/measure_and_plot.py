@@ -101,7 +101,7 @@ try:
                 data = vna.de_embed(gamma_meas = data)
                 if args.nw_sprm_file:
                     sprms = np.load(args.nw_sprm_file)['sprms']
-                    data = vna.de_embed(gamma_meas=data)
+                    data = vna.de_embed(gamma_meas=data, sprms=sprms)
                 ax[0].plot(freq, 20*np.log10(np.abs(data)))
                 ax[1].plot(freq, np.angle(data, deg=True))
                 plt.tight_layout()
