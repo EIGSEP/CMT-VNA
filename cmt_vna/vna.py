@@ -2,10 +2,6 @@ import numpy as np
 import pyvisa
 import time
 from datetime import datetime
-from .calkit import S911T
-import mistdata.cal_s11 as cal
-import threading
-import matplotlib.pyplot as plt
 
 IP = "127.0.0.1"
 PORT = 5025
