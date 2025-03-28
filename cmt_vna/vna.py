@@ -139,7 +139,7 @@ class VNA:
         '''
         de-embeds s-parameters from measurements. Default is to de-embed self.sparams. sprms_file can be a file path, sprms_network can be a (3,N) np array, both default to None.
         '''
-        if not sprms:
+        if sprms is None:
             sprms = self.sparams
         gamma_cal = cal.de_embed_sparams(sprms, gamma_meas)
         return gamma_cal
