@@ -68,7 +68,7 @@ i = 0
 while i < args.max_files:
     if args.osl: #measures standards, saves them, uses them to calibrate meas
         calkit = S911T(freq_Hz=freq)
-        vna.add_OSL()
+        vna.add_OSL(key='vna')
     
     print("Calibration complete.")
     print("Connect DUT and hit enter")
@@ -78,6 +78,20 @@ while i < args.max_files:
         print('reading')
         vna.read_data(num_data = args.num_data)
         print('done reading')
+        if args.plot:
+            vna.add_sparams(kit=calkit, sprm_key='vna', std_key='vna')
+            gamma_cals = vna.calibrate_gammas(sprm_keys=['vna'])
+            plt.ion()
+            fig,ax = plt.subplots(2,1, figsize=(8,8))
+            ax[0].plot(freqs, 20*np.log10(gamma_cals.T))
+            ax[0].set_xlabel('freqs [Hz]')
+            ax[0].set_ylabel('S11 Mag [dB]')
+            ax[0].grid()
+            ax[1].plot(freqs, np.phase(gamma_cals, deg=True).T)
+            ax[1].set_xlabel('freqs [Hz]')
+            ax[1].set_ylabel('S11 Phase [deg]')
+            ax[1].grid()
+           
         vna.write_data(outdir=args.outdir)
         time.sleep(args.cadence)
     except KeyboardInterrupt:

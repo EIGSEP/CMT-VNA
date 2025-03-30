@@ -359,7 +359,7 @@ class BasicLoadStandard:
     
     @property
     def gamma(self):
-        return cal_s11.impedance_to_gamma(self.impedance, self.Z0) 
+        return impedance_to_gamma(self.impedance, self.Z0) 
 
 class S911T(CalKit):
     def __init__(self, freq_Hz, match_resistance=50):
@@ -416,5 +416,5 @@ class S911T(CalKit):
         '''
         if not model:
             model = self.std_gamma #get model standards if none are provided
-        sparams = cal_s11.network_sparams(model, stds_meas)
+        sparams = network_sparams(model, stds_meas)
         return sparams

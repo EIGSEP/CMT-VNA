@@ -49,24 +49,19 @@ calkit = S911T(freq_Hz = freq)
 model_stds = calkit.std_gamma
 
 print('Measuring standards at the VNA port')
-OSL = vna.measure_OSL() #gets osl standards at vna
-OSL_arr = np.array([d for key, d in OSL.items()])
+vna.add_OSL(std_key='vna')
 
 #vna s parameters 
-vna_sprms = cal.network_sparameters(gamma_true=model_stds, gamma_meas=OSL_arr)
+vna.add_sparams(kit=calkit, sprm_key='vna', std_key='vna')
 
 print("Measuring at the top of the cable")
-OSL_cable = vna.measure_OSL()
-OSL_cable_arr = np.array([d for key, d in OSL_cable.items()])
+vna.add_OSL(std_key='cable')
 
 #De embed vna sparameters from the standards at the cable port
-OSL_cable_ref_vna = cal.de_embed_sparams(sparams=vna_sprms, gamma_prime=OSL_cable_arr)
+new_key = vna.calibrate_std(sprm_key='vna', std_key='cable')
 
 #compare the cable measurements with vna sprm de-embedded to the models
-cable_nw_sprms = cal.network_sparams(gamma_true=model_stds, gamma_meas=OSL_cable_ref_vna)
+vna.add_sparams(kit=calkit, sprm_key='cable', std_key=new_key)
 
-date = datetime.now().strftime('%Y%m%d_%H%M%S')
-np.savez(f'{outdir}/{date}_cable_new_sprms.npz',freqs=freq, sprms=cable_nw_sprms)
-np.savez(f'{outdir}/{date}_vna_stds.npz',**OSL)
-np.savez(f'{outdir}/{date}_cable_stds.npz', **OSL_cable) 
+vna.write_data(args.outdir)
 
