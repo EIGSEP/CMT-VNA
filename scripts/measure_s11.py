@@ -91,7 +91,7 @@ while i < args.max_files:
             ax[1].set_xlabel('freqs [Hz]')
             ax[1].set_ylabel('S11 Phase [deg]')
             ax[1].grid()
-           
+            plt.show()
         vna.write_data(outdir=args.outdir)
         time.sleep(args.cadence)
     except KeyboardInterrupt:

@@ -134,7 +134,7 @@ class VNA:
 
     def read_data(self, num_data=1): 
         '''
-        reads num_data s11s, adds them to self.data.
+        reads num_data s11s, adds them to self.gammas.
         '''
         i = 0
         while i < num_data:
