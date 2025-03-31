@@ -56,6 +56,10 @@ parser.add_argument(
     default=1,
     help="Number of datasets to take each time.",
 )
+parser.add_argument(
+    "--sprm_file", default=None, help='file that holds the sparameters of the cable system.'
+)
+
 args = parser.parse_args()
 vna = VNA(ip="127.0.0.1", port=5025)
 print(f"Connected to {vna.id}.")
@@ -72,7 +76,7 @@ i = 0
 while i < args.max_files:
     if args.osl: #measures standards, saves them, uses them to calibrate meas
         calkit = S911T(freq_Hz=freq)
-        vna.add_OSL(key='vna')
+        vna.add_OSL(std_key='vna')
     
     print("Calibration complete.")
     print("Connect DUT and hit enter")
@@ -84,14 +88,17 @@ while i < args.max_files:
         print('done reading')
         if args.plot:
             vna.add_sparams(kit=calkit, sprm_key='vna', std_key='vna')
-            gamma_cals = vna.calibrate_gammas(sprm_keys=['vna'])
+            if args.sprm_file is not None:
+                cable_sparams = np.load(args.sprm_file)['cable']
+                vna.sparams['cable'] = cable_sparams
+            gamma_cals = vna.calibrate_gammas(sprm_keys=list(vna.sparams.keys()))
             plt.ion()
             fig,ax = plt.subplots(2,1, figsize=(8,8))
-            ax[0].plot(freqs, 20*np.log10(gamma_cals.T))
+            ax[0].plot(freq, 20*np.log10(gamma_cals.T))
             ax[0].set_xlabel('freqs [Hz]')
             ax[0].set_ylabel('S11 Mag [dB]')
             ax[0].grid()
-            ax[1].plot(freqs, np.phase(gamma_cals, deg=True).T)
+            ax[1].plot(freq, np.angle(gamma_cals, deg=True).T)
             ax[1].set_xlabel('freqs [Hz]')
             ax[1].set_ylabel('S11 Phase [deg]')
             ax[1].grid()

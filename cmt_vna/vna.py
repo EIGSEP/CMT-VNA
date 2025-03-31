@@ -129,7 +129,7 @@ class VNA:
                     print('overwriting.')
         ##################################################################
         OSL = self.measure_OSL()
-        self.stds[sprm_key] = np.array(list(OSL.values()))
+        self.stds[std_key] = np.array(list(OSL.values()))
         self.stds_meta[std_key] = list(OSL.keys())
 
     def read_data(self, num_data=1): 
