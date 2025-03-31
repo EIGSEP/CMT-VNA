@@ -17,6 +17,10 @@ parser.add_argument(
     "--osl", default=False, action='store_true', help="Perform calibration measurement."
 )
 parser.add_argument(
+    "--plot", default=False, action='store_true', help="If true, output calibrated plot."
+)
+
+parser.add_argument(
     "--fstart", type=float, default=1e6, help="Start frequency in Hz."
 )
 parser.add_argument(
