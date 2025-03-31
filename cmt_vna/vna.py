@@ -178,7 +178,7 @@ class VNA:
         '''
         
         stds_meas = self.stds[std_key] 
-        params = kit.sparams(stds_meas=stds_meas) #default is model standards
+        params = cal.network_sparams(gamma_true=kit.std_gamma, gamma_meas=stds_meas)
         self.sparams[sprm_key] = params
 
     def calibrate_gammas(self,sprm_keys):
