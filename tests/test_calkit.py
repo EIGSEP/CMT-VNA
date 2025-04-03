@@ -1,6 +1,5 @@
-import mistdata.cal_s11 as cal
+from cmt_vna import calkit as cal
 from cmt_vna import VNA
-from cmt_vna import S911T
 import numpy as np
 
 def test_S911T():
@@ -8,7 +7,7 @@ def test_S911T():
 
     Z0 = 50
     fake_freqs = np.linspace(50e6, 250e6, 1001)
-    calkit = S911T(freq_Hz = fake_freqs)
+    calkit = cal.S911T(freq_Hz = fake_freqs)
 
     #open standard
     c_open = -7.425E-15 + 2470E-27 * fake_freqs - 226E-36 * fake_freqs**2 + 6.18E-45 * fake_freqs**3
@@ -47,7 +46,7 @@ gamma_ter_short = cal.impedance_to_gamma(Z_ter_short, Z0)
     assert np.allclose(calkit.short.gamma, gamma_short)
 
 def test_sparams():
-    calkit = S911T(freq_Hz = fake_freqs)
+    calkit = cal.S911T(freq_Hz = fake_freqs)
     gamma = calkit.std_gamma
     
     #gamma should be equal to the self gamma, so will get a perfect through Smatrix

@@ -187,9 +187,6 @@ class VNA:
            IN
            kit: CalKit object.
            sprm_keys : sparams to de-embed from the gammas.
-
-           OUT
-           
         '''
         gammas = np.array(list(self.gammas.values()))
         for sprm_key in sprm_keys:
