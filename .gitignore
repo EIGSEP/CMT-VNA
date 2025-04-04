@@ -3,4 +3,6 @@
 *.pyc
 .venv/
 build/
-src/*.egg-info
+dist/
+**.egg-info
+.DS_Store
