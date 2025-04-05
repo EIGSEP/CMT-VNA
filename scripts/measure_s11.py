@@ -5,7 +5,7 @@ import time
 from cmt_vna import VNA
 from cmt_vna import S911T
 import matplotlib.pyplot as plt
-import mistdata.cal_s11 as cal
+from cmt_vna import calkit as cal
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -17,11 +17,7 @@ parser.add_argument(
     "--osl", default=False, action='store_true', help="Perform calibration measurement."
 )
 parser.add_argument(
-    "--cal", default=None, help="File with which to calibrate."
-)
-
-parser.add_argument(
-    "--plot", default=False, action='store_true', help="Plot."
+    "--plot", default=False, action='store_true', help="If true, output calibrated plot."
 )
 
 parser.add_argument(
@@ -54,9 +50,17 @@ parser.add_argument(
 parser.add_argument(
     "--outdir", type=str, default="/home/charlie/eigsep/CMT-VNA/data", help="Output directory."
 )
+parser.add_argument(
+    "-n", "--num_data",
+    type=int,
+    default=1,
+    help="Number of datasets to take each time.",
+)
+parser.add_argument(
+    "--sprm_file", default=None, help='file that holds the sparameters of the cable system.'
+)
+
 args = parser.parse_args()
-
-
 vna = VNA(ip="127.0.0.1", port=5025)
 print(f"Connected to {vna.id}.")
 
@@ -68,43 +72,42 @@ freq = vna.setup(
     power_dBm=args.power,
 )
 
-if args.osl: #measures standards, saves them, uses them to calibrate meas
-    OSL = vna.calibrate_OSL()
-    date = datetime.now().strftime("%Y%m%d_%H%M%S")
-    #save calibration data
-
-    cal_file=f"{args.outdir}/cals/{date}_calibration.npz" 
-    np.savez(cal_file, open=OSL['open'], short=OSL['short'], load=OSL['load'], freqs= freq)
-    vna.add_sparams(np.array(freq), cal_file) #adds sprms to vna object
-
+i = 0
+while i < args.max_files:
+    if args.osl: #measures standards, saves them, uses them to calibrate meas
+        calkit = S911T(freq_Hz=freq)
+        vna.add_OSL(std_key='vna')
+    
     print("Calibration complete.")
     print("Connect DUT and hit enter")
     input()
 
-if args.plot: #plots
-    plt.ion()
-    fig, ax = plt.subplots(1,1)
-if args.cal:
-    cal_file = args.cal
-    vna.add_sparams(np.array(freq), cal_file)
-
-i = 0
-while i < args.max_files:
     try:
-        gamma = vna.measure_S11()
-        date = datetime.now().strftime("%Y%m%d_%H%M%S")
-        np.savez(f"{args.outdir}/{date}.npz", gamma=gamma, freqs = freq)
-        i += 1
-        if args.cal or args.osl: #calibrates 
-            gamma = vna.de_embed(gamma_meas=gamma)
-                 
+        print('reading')
+        vna.read_data(num_data = args.num_data)
+        print('done reading')
         if args.plot:
-            ax.plot(freq, gamma, label=datetime.now().strftime("%m/%d, %H:%M:%S"))
-            ax.legend()
-            fig.canvas.draw()
-            fig.canvas.flush_events()
- 
+            vna.add_sparams(kit=calkit, sprm_key='vna', std_key='vna')
+            if args.sprm_file is not None:
+                cable_sparams = np.load(args.sprm_file)['cable']
+                vna.sparams['cable'] = cable_sparams
+            gamma_cals = vna.calibrate_gammas(sprm_keys=list(vna.sparams.keys()))
+            plt.ion()
+            fig,ax = plt.subplots(2,1, figsize=(8,8))
+            ax[0].plot(freq, 20*np.log10(gamma_cals.T))
+            ax[0].set_xlabel('freqs [Hz]')
+            ax[0].set_ylabel('S11 Mag [dB]')
+            ax[0].grid()
+            ax[1].plot(freq, np.angle(gamma_cals, deg=True).T)
+            ax[1].set_xlabel('freqs [Hz]')
+            ax[1].set_ylabel('S11 Phase [deg]')
+            ax[1].grid()
+            plt.show()
+        vna.write_data(outdir=args.outdir)
         time.sleep(args.cadence)
     except KeyboardInterrupt:
+        vna.write_data(outdir=args.outdir)
         break
-fig.savefig(f'{args.outdir}/{date}.png')
+    finally:
+        i += 1
+        print('finished writing')

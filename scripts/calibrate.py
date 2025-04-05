@@ -25,9 +25,5 @@ freq = vna.setup(
     ifbw = args.ifbw,
     power_dBm = 0)
 
-date = datetime.now().strftime("%Y%m%d_%H%M%S")
-np.savez(f'{args.outdir}/{date}_freqs.npz', freq=freq)
-
-OSL = vna.calibrate_OSL()
-date = datetime.now().strftime("%Y%m%d_%H%M%S")
-np.savez(f'{args.outdir}/{date}_calibration.npz', open=OSL['open'], short=OSL['short'], load=OSL['load'])
+vna.add_OSL()
+vna.write_data(outdir = args.outdir)

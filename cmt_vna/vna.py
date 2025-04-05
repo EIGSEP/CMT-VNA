@@ -1,9 +1,9 @@
 import numpy as np
+from .calkit import S911T
+from . import calkit as cal
 import pyvisa
 import time
 from datetime import datetime
-from .calkit import S911T
-import mistdata.cal_s11 as cal
 
 IP = "127.0.0.1"
 PORT = 5025
@@ -16,6 +16,7 @@ class VNA:
         self.s = self.rm.open_resource(f"TCPIP::{ip}::{port}::SOCKET")
         self.s.read_termination = "\n"
         self.s.timeout = to
+        self._clear_data()
 
     @property
     def id(self):
@@ -28,12 +29,17 @@ class VNA:
         """
         return self.s.query("*OPC?\n")
 
+    def _clear_data(self):
+        self.sparams=dict() 
+        self.gammas = dict()
+        self.stds=dict()
+        self.stds_meta = dict()
+
     def setup(self, fstart=1e6, fstop=250e6, npoints=1000, ifbw=100, power_dBm=0):
         """
         Setup S11 measurement.
 
-        Parameters
-        ----------
+        IN
         fstart : float
             Start frequency in Hz
         fstop : float
@@ -45,6 +51,8 @@ class VNA:
         power_dBm : float
             Power level in dBm
 
+        OUT
+        adds freqs attribute to vna object. returns freqs array as well.
         """
         self.s.write(
             "FORM:DATA REAL\n"
@@ -68,16 +76,12 @@ class VNA:
         self.s.write("TRIG:SOUR BUS\n")
         freq = self.s.query_binary_values('SENS1:FREQ:DATA?', container=np.array, is_big_endian=True, datatype='d')
         freq = [float(i) for i in freq]
-        return freq
+        self.freqs = np.array(freq)
+        return np.array(freq)
 
     def measure_S11(self, verbose = False):
         '''
         Get S11 measurement. Can be used for standards and antenna measurements. 
-
-        verbose : boolean (Default = False).
-             If true, prints time it took for sweep.
-
-        Returns : numpy array of complex S11 measurement.
         '''
         t0 = time.time()
         self.s.write('TRIG:SEQ:SING')
@@ -90,48 +94,113 @@ class VNA:
         data = data[0::2] + 1j * data[1::2]
         return data
 
-    def calibrate_OSL(self):
-        '''
-        Iterate through standards for measurement.
+    def measure_OSL(self):
+        '''Iterate through all standards for measurement. Returns dictionary with keys 'open', 'short', and 'load'.'''
 
-        Returns : dictionary with keys 'open', 'short', 'load'.
-        '''
+        OSL = dict()
         standards = ['open', 'short', 'load'] #set osl standard list
-        osl_data = dict()
-        #iterate through standards, take data and add to dictionary
         for standard in standards:
              print(f'connect {standard} and press enter')
              input()
              data = self.measure_S11()
-             osl_data[standard] = data
-        return osl_data
+             OSL[standard] = data
+        return OSL
 
-    def add_sparams(self, stds_file, kit):
+    def add_OSL(self, std_key='vna', overwrite=False): 
         '''
-        Adds sparams attribute to the VNA object.
+        Iterate through standards for measurement. Adds standards measurement to self.stds.
         
         IN
-        stds_file : str 
-            Filename for where the reflection coefficient measurements of each standard is written.
-        kit : calibration kit object
-            For now, it will be an S911T object, which inherits MIST's CalKit object.
-        '''
-        osl = np.load(stds_file)
-        stds_meas = np.vstack([osl['open'], osl['short'], osl['load']])
-        params = kit.sparams(stds_meas=stds_meas)
-        self.sparams = params
-
-    def de_embed(self, gamma_meas):
-        '''
-        de-embeds the vna's assigned sparams.
-        TODO: generalize to be able to de-embed incrementally. 
-        IN
-        gamma_meas : np.array (1, N)
-            Measured reflection coefficient to be calibrated.
+        sprm_key : key value to assign to the OSL entry in self.stds. default is vna.
+        overwrite : mainly for dev. allows you to overwrite key value pairs in self.stds. 
         OUT
-        np.array (1, N)
-            calibrated measurement.
+        
         '''
-        sprms = self.sparams
-        gamma_cal = cal.de_embed_sparams(sprms, gamma_meas)
-        return gamma_cal
+        ###So I don't accidentally overwrite standards when I'm testing### 
+        if not overwrite:
+            try:
+                assert std_key not in list(self.stds.keys())
+            except AssertionError:
+                print('You are about to overwrite the standards that already exist. Would you like to overwrite? (y/n)')
+                decision = input()
+                if decision.lower() == 'n':
+                    return
+                else:
+                    print('overwriting.')
+        ##################################################################
+        OSL = self.measure_OSL()
+        self.stds[std_key] = np.array(list(OSL.values()))
+        self.stds_meta[std_key] = list(OSL.keys())
+
+    def read_data(self, num_data=1): 
+        '''
+        reads num_data s11s, adds them to self.gammas.
+        '''
+        i = 0
+        while i < num_data:
+            i += 1 
+            gamma = self.measure_S11()
+            date = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.gammas[date] = gamma
+    
+    def write_data(self, outdir): #vna
+        '''
+        writes all the data in vna to an npz, clears the data that was just written.
+        '''
+        date = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ###This section is mostly so when I'm testing, I don't write a million empty files###
+        stds_keys=len(self.stds.keys())
+        sprms_keys = len(self.sparams.keys())
+        gamma_keys = len(self.gammas.keys())
+        if (stds_keys==0) or (sprms_keys==0) or (gamma_keys == 0):
+            print(f'you are saving {stds_keys} sets of standards, {sprms_keys} sets of sparams, and {gamma_keys} sets of gammas. Do you want to save? (y/n)')
+            decision = input()
+            if decision.lower() == 'n':
+                return
+        ###########################################################
+        self.gammas['freqs'] = self.freqs
+        np.savez(f'{outdir}/{date}_gammas.npz', **self.gammas) 
+        np.savez(f'{outdir}/{date}_sparams.npz', **self.sparams) 
+        np.savez(f'{outdir}/{date}_standards.npz', **self.stds) 
+        self._clear_data()
+
+    def add_sparams(self, kit, sprm_key, std_key='vna'):
+        '''
+        Adds sparams with key to self.sparams dict.
+        
+        IN
+        kit : CalKit object.
+        sprm_key : key for self.sparams.
+        std_key : key of osl to use in self.stds. 
+
+        OUT:
+        returns None. new self.sparams entry.
+        '''
+        
+        stds_meas = self.stds[std_key] 
+        params = cal.network_sparams(gamma_true=kit.std_gamma, gamma_meas=stds_meas)
+        self.sparams[sprm_key] = params
+
+    def calibrate_gammas(self,sprm_keys):
+        '''calibrates all gamma values with respect to all networks 
+
+           IN
+           kit: CalKit object.
+           sprm_keys : sparams to de-embed from the gammas.
+        '''
+        gammas = np.array(list(self.gammas.values()))
+        for sprm_key in sprm_keys:
+            sprm = self.sparams[sprm_key]
+            gammas = cal.de_embed_sparams(sparams=sprm, gamma_prime=gammas)
+        return gammas
+
+    def calibrate_std(self, sprm_key, std_key):
+        '''adds a calibrated osl standard to self.stds'''
+        osl = self.stds[std_key]
+        sprm = self.sparams[sprm_key]
+        cal_osl = cal.de_embed_sparams(sparams=sprm, gamma_prime=osl)
+        new_key = f'{std_key}_ref_{sprm_key}'
+        self.stds[new_key] = cal_osl
+        return new_key        
+
+
