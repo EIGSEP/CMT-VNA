@@ -109,5 +109,4 @@ while i < args.max_files:
         i += 1
         vna.write_data(outdir=args.outdir)
         time.sleep(args.cadence)
-        vna.write_data(outdir=args.outdir)
         print('finished writing')

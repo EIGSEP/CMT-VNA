@@ -15,8 +15,18 @@ args = parser.parse_args()
 
 vna = VNA()
 
-sparams = np.load(f'{args.file}_sparams.npz').values()
-standards = np.load(f'{args.file}standards.npz').values()
-gammas = np.load(f'{args.file}_gammas.npz').values()
+try:
+    sparams = np.load(f'{args.file}_sparams.npz').values()
+except FileNotFoundError:
+    print('No sparam file.')
+try:
+    standards = np.load(f'{args.file}_standards.npz').values()
+except FileNotFoundError:
+    print('No standards file.')
+try:
+    gammas = np.load(f'{args.file}_gammas.npz').values()
+except FileNotFoundError:
+    print('No gammas file.')
 
+freqs = gammas['freqs']
 
