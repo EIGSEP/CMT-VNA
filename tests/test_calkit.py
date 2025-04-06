@@ -195,7 +195,7 @@ def test_S911T():
     Z_off_short = Z0 + (1-1j) * l_loss / (4 * np.pi * fake_freqs) * np.sqrt(fake_freqs/1e9)
     gamma_off_short = cal.impedance_to_gamma(Z_off_short, Z0)
     Z_ter_short = 1j * 2 * np.pi * fake_freqs * l_short
-gamma_ter_short = cal.impedance_to_gamma(Z_ter_short, Z0)
+    gamma_ter_short = cal.impedance_to_gamma(Z_ter_short, Z0)
 
     g_l_short = 1j * 2 * np.pi * fake_freqs * l_delay + (1+1j) * l_delay * l_loss / (2 * Z0) * np.sqrt(fake_freqs/1e9)
 
@@ -207,6 +207,7 @@ gamma_ter_short = cal.impedance_to_gamma(Z_ter_short, Z0)
     assert np.allclose(calkit.short.gamma, gamma_short)
 
 def test_sparams():
+    fake_freqs = np.linspace(50e6, 250e6, 1001)
     calkit = cal.S911T(freq_Hz = fake_freqs)
     gamma = calkit.std_gamma
     
