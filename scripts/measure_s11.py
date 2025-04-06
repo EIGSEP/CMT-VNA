@@ -3,7 +3,6 @@ from datetime import datetime
 import numpy as np
 import time
 from cmt_vna import VNA
-from cmt_vna import S911T
 import matplotlib.pyplot as plt
 from cmt_vna import calkit as cal
 import warnings
@@ -75,7 +74,7 @@ freq = vna.setup(
 i = 0
 while i < args.max_files:
     if args.osl: #measures standards, saves them, uses them to calibrate meas
-        calkit = S911T(freq_Hz=freq)
+        calkit = cal.S911T(freq_Hz=freq)
         vna.add_OSL(std_key='vna')
     
     print("Calibration complete.")
@@ -103,11 +102,12 @@ while i < args.max_files:
             ax[1].set_ylabel('S11 Phase [deg]')
             ax[1].grid()
             plt.show()
-        vna.write_data(outdir=args.outdir)
-        time.sleep(args.cadence)
+        
     except KeyboardInterrupt:
-        vna.write_data(outdir=args.outdir)
         break
     finally:
         i += 1
+        vna.write_data(outdir=args.outdir)
+        time.sleep(args.cadence)
+        vna.write_data(outdir=args.outdir)
         print('finished writing')
