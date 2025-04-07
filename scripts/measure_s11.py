@@ -77,7 +77,7 @@ while i < args.max_files:
         calkit = cal.S911T(freq_Hz=freq)
         vna.add_OSL(std_key='vna')
         vna.add_sparams(kit=calkit, sprm_key='vna', std_key='vna')
-            if args.sprm_file is not None:
+        if args.sprm_file is not None:
             cable_sparams = np.load(args.sprm_file)['cable']
             vna.sparams['cable'] = cable_sparams
    
