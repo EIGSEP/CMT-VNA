@@ -3,7 +3,6 @@ from datetime import datetime
 import numpy as np
 import time
 from cmt_vna import VNA
-from cmt_vna import S911T
 from cmt_vna import calkit as cal
 import matplotlib.pyplot as plt
 import warnings
@@ -45,7 +44,7 @@ freq = vna.setup(
     power_dBm=args.power,
 )
 
-calkit = S911T(freq_Hz = freq)
+calkit = cal.S911T(freq_Hz = freq)
 model_stds = calkit.std_gamma
 
 print('Measuring standards at the VNA port')
