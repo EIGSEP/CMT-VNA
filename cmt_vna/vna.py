@@ -150,12 +150,12 @@ class VNA:
     
     def write_data(self, outdir, save_sprms=True, save_stds=True): 
         '''
-        writes all the data in vna to an npz, clears the data that was just written.
+        writes ALL the data in vna to an npz (including all sparameters calculated) and saves to npzs. clears the data out of the vna object. 
         '''
         date = datetime.now().strftime("%Y%m%d_%H%M%S")
         
         
-        self.gammas['freqs'] = self.freqs
+        self.gammas['freqs'] = self.freqs #adds the frequency array to the gammas dict
         np.savez(f'{outdir}/{date}_gammas.npz', **self.gammas)
         #always saves the gammas/freqs, but only saves sparams and standards if you tell it to (default is to save them)
         if save_sprms and len(self.sparams.keys()) != 0: 

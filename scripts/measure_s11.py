@@ -56,7 +56,7 @@ parser.add_argument(
     help="Number of datasets to take each time.",
 )
 parser.add_argument(
-    "--sprm_file", default=None, help='file that holds the sparameters of the cable system.'
+    "--sprm_file", default=None, help='file that holds the sparameters of the cable system. adds the sparameters to the vna object, which is then written to the file by write_data.'
 )
 
 args = parser.parse_args()
