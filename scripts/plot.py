@@ -28,7 +28,8 @@ except FileNotFoundError:
     print('No gammas file.')
 
 freqs = gammas.pop('freqs')
-
+vna.gammas = gammas
+vna.sparams = sparams
 calkit=cal.S911T(freq_Hz=freqs)
 
 try:
@@ -37,7 +38,7 @@ except AssertionError:
     print('No gammas in your file to plot. Exiting...')
     sys.exit(1)
 
-gammas_cal = vna.calibrate_gammas(sprm_keys=list(gammas.keys()))
+gammas_cal = vna.calibrate_gammas(sprm_keys=list(sparams.keys()))
 
 plt.ion()
 fig,ax = plt.subplots(2,1, figsize=(8,8), sharex=True)
@@ -52,7 +53,7 @@ ax[1].grid()
 
 plt.suptitle('S11 Graphs')
 
-plt.show()
+plt.show(block=True)
 
 
 
