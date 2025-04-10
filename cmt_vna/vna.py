@@ -132,7 +132,7 @@ class VNA:
             i += 1 
             gamma = self.measure_S11()
             date = datetime.now().strftime("%Y%m%d_%H%M%S")
-            self.data[date] = gamma
+            self.data[f'{date}_gamma'] = gamma
     
     def write_data(self, outdir, save_stds=True): 
         '''
