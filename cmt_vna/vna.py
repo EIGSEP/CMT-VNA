@@ -30,9 +30,7 @@ class VNA:
         return self.s.query("*OPC?\n")
 
     def _clear_data(self):
-        self.sparams=dict() 
-        self.gammas = dict()
-        self.stds=dict()
+        self.data = dict()
         self.stds_meta = dict()
 
     def setup(self, fstart=1e6, fstop=250e6, npoints=1000, ifbw=100, power_dBm=0):
@@ -115,24 +113,12 @@ class VNA:
         Iterate through standards for measurement. Adds standards measurement to self.stds.
         
         IN
-        sprm_key : key value to assign to the OSL entry in self.stds. default is vna.
+        std_key : key value to assign to the OSL entry in self.stds. default is vna.
         overwrite : mainly for dev. allows you to overwrite key value pairs in self.stds. 
         auto : also mainly for dev. if auto is False, you have to manually attach the OSL standards. 
         '''
-        ###So I don't accidentally overwrite standards when I'm testing### 
-        if not overwrite:
-            try:
-                assert std_key not in list(self.stds.keys())
-            except AssertionError:
-                print('You are about to overwrite the standards that already exist. Would you like to overwrite? (y/n)')
-                decision = input()
-                if decision.lower() == 'n':
-                    return
-                else:
-                    print('overwriting.')
-        ##################################################################
         OSL = self.measure_OSL(auto=auto)
-        self.stds[std_key] = np.array(list(OSL.values()))
+        self.data[std_key] = np.array(list(OSL.values()))
         self.stds_meta[std_key] = list(OSL.keys())
 
     def read_data(self, num_data=1): 
@@ -146,66 +132,16 @@ class VNA:
             i += 1 
             gamma = self.measure_S11()
             date = datetime.now().strftime("%Y%m%d_%H%M%S")
-            self.gammas[date] = gamma
+            self.data[date] = gamma
     
-    def write_data(self, outdir, save_sprms=True, save_stds=True): 
+    def write_data(self, outdir, save_stds=True): 
         '''
-        writes ALL the data in vna to an npz (including all sparameters calculated) and saves to npzs. clears the data out of the vna object. 
+        writes ALL the data in vna to an npz and saves to npzs. clears the data out of the vna object. 
         '''
         date = datetime.now().strftime("%Y%m%d_%H%M%S")
         
         
-        self.gammas['freqs'] = self.freqs #adds the frequency array to the gammas dict
-        np.savez(f'{outdir}/{date}_gammas.npz', **self.gammas)
-        #always saves the gammas/freqs, but only saves sparams and standards if you tell it to (default is to save them)
-        if save_sprms and len(self.sparams.keys()) != 0: 
-            np.savez(f'{outdir}/{date}_sparams.npz', **self.sparams) 
-        if save_stds and len(self.stds.keys()) != 0:
-            np.savez(f'{outdir}/{date}_standards.npz', **self.stds) 
+        self.data['freqs'] = self.freqs #adds the frequency array to the gammas dict
+        np.savez(f'{outdir}/{date}_data.npz', **self.data)
         self._clear_data()
-
-    def add_sparams(self, kit, sprm_key, std_key='vna'):
-        '''
-        Adds sparams with key to self.sparams dict.
-        
-        IN
-        kit : CalKit object.
-        sprm_key : key for new sparam array.
-        std_key : key of osl to use for extracting sparams. 
-        '''
-        
-        stds_meas = self.stds[std_key] 
-        params = cal.network_sparams(gamma_true=kit.std_gamma, gamma_meas=stds_meas)
-        self.sparams[sprm_key] = params
-
-    def calibrate_gammas(self,sprm_keys):
-        '''calibrates all gamma values with respect to all networks 
-
-           IN
-           kit: CalKit object.
-           sprm_keys : sparams to de-embed from the gammas.
-           OUT
-           returns the calibrated gammas as an array. 
-        '''
-        gammas = np.array(list(self.gammas.values()))
-        for sprm_key in sprm_keys:
-            sprm = self.sparams[sprm_key]
-            gammas = cal.de_embed_sparams(sparams=sprm, gamma_prime=gammas)
-        return gammas
-
-    def calibrate_std(self, sprm_key, std_key):
-        '''adds a calibrated osl standard to self.stds
-           IN
-           sprm_key : key for the sparams being de-embedded from the standards.
-           std_key : key for the osl standards that are being calibrated.
-           OUT
-           Adds the calibrated osl standards to self.stds and returns the new key for the calibrated stds.
-'''
-        osl = self.stds[std_key] 
-        sprm = self.sparams[sprm_key]
-        cal_osl = cal.de_embed_sparams(sparams=sprm, gamma_prime=osl)
-        new_key = f'{std_key}_ref_{sprm_key}'
-        self.stds[new_key] = cal_osl
-        return new_key        
-
 

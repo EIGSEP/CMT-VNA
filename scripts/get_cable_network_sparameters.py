@@ -50,17 +50,8 @@ model_stds = calkit.std_gamma
 print('Measuring standards at the VNA port')
 vna.add_OSL(std_key='vna')
 
-#vna s parameters 
-vna.add_sparams(kit=calkit, sprm_key='vna', std_key='vna')
-
 print("Measuring at the top of the cable")
 vna.add_OSL(std_key='cable')
-
-#De embed vna sparameters from the standards at the cable port
-new_key = vna.calibrate_std(sprm_key='vna', std_key='cable')
-
-#compare the cable measurements with vna sprm de-embedded to the models
-vna.add_sparams(kit=calkit, sprm_key='cable', std_key=new_key)
 
 vna.write_data(args.outdir)
 

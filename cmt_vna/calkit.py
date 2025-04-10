@@ -110,20 +110,36 @@ def network_sparams(gamma_true, gamma_meas):
     """
     gamma_true = np.array(gamma_true, dtype=complex)
     gamma_meas = np.array(gamma_meas, dtype=complex)
+    
     _orig_shape = gamma_true.shape
-    # collapse the frequency axis with any subsequent axes and transpose
-    gamma_true = np.reshape(gamma_true, (3, -1)).T  # shape is (..., 3)
-    gamma_meas = np.reshape(gamma_meas, (3, -1)).T
-    # ``nfreq'' number of 3x3 matrices to invert in eq 3
-    mat = np.dstack(
-        ((np.ones_like(gamma_true), gamma_true, gamma_true * gamma_meas))
-    )
-    # solve: mat is `a' (shape ..., 3, 3), gamma_meas is `b' (shape ..., 3)
-    sparams = np.linalg.solve(mat, gamma_meas)  # (..., 3)
-    sparams = np.reshape(sparams.T, _orig_shape)  # (3, ...)
-    sparams[1] += sparams[0] * sparams[2]  # need to do this to get S12 * S21
-    return np.squeeze(sparams)
+    
+    # Reshape to (N, 3)
+    gamma_true = gamma_true.T  # shape (N, 3)
+    gamma_meas = gamma_meas.T  # shape (N, 3)
+    
+    # Construct (N, 3, 3) matrix
+    mat = np.stack(
+        [
+            np.ones_like(gamma_true),
+            gamma_true,                           
+            gamma_true * gamma_meas               
+        ],
+        axis=-1
+    )  # shape (N, 3, 3)
+    
+    gamma_meas = gamma_meas[..., np.newaxis]  # or gamma_meas.reshape(N, 3, 1)
+    
+    sparams = np.linalg.solve(mat, gamma_meas)  # shape (N, 3, 1)
+    
+    sparams = np.squeeze(sparams, axis=-1)  # shape (N, 3)
+    
+    # Reshape back to original
+    sparams = sparams.T.reshape(_orig_shape)
+    
+    # Compute S12 * S21
+    sparams[1] += sparams[0] * sparams[2]
 
+    return np.squeeze(sparams)
 
 def embed_sparams(sparams, gamma):
     """
@@ -173,6 +189,19 @@ def de_embed_sparams(sparams, gamma_prime):
     gamma = d / (s12s21 + s22 * d)
     return gamma
 
+def calibrate(kit, gammas, sprms_dict):
+    '''calibrates all gammas in gammas dict with respect to all sparams in sprms dict. Applicable to both gammas and standards.
+
+        IN
+        kit: CalKit object.
+        gammas : array that contains all gamma values to be processed. 
+        sprms_dict : sparams dict to de-embed from the gammas.
+        OUT
+        returns the calibrated gammas as an array. 
+    '''
+    for key, sprm in sprms_dict.items():
+        gammas = np.array([de_embed_sparams(sparams=sprm, gamma_prime=g) for g in gammas])
+    return gammas
 
 class CalStandard:
 
