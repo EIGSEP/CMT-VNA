@@ -16,7 +16,7 @@ parser.add_argument('--outdir', default='/home/charlie/eigsep/CMT-VNA/data/', he
 args = parser.parse_args()
 
 data_file = np.load(args.file)
-data = dict(data_file.items())
+data = dict(data_file)
 
 sparams_file = np.load(args.sprm_file)
 if len(sparams_file.keys()) > 1:
@@ -24,9 +24,9 @@ if len(sparams_file.keys()) > 1:
     decision = input()
     cable_sparams = sparams_file[decision]
 else:
-    cable_sparams = np.array([sparams_file.values()])
+    cable_sparams = list(sparams_file.values())[0]
+    print(cable_sparams.shape)
 
-freqs = gammas.pop('freqs')
 sparams = dict()
 
 freqs = data.pop('freqs')
@@ -52,7 +52,7 @@ except AssertionError:
     sys.exit(1)
 
 #calibrate all gammas wrt all sparams in sparams dict
-gammas_cal = vna.calibrate(kit=calkit, gammas=np.array(list(data.values())), sprms_dict=sparams)
+gammas_cal = cal.calibrate(kit=calkit, gammas=np.array(list(data.values())), sprms_dict=sparams)
 
 plt.ion()
 fig,ax = plt.subplots(2,1, figsize=(8,8), sharex=True)
