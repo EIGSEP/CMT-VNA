@@ -77,9 +77,7 @@ while i < args.max_files:
         print('reading')
         vna.read_data(num_data = args.num_data)
         print('done reading')
-        if args.osl:
-            gamma_cals = vna.calibrate_gammas(sprm_keys=list(vna.sparams.keys()))
-        
+       
     except KeyboardInterrupt:
         break
     finally:

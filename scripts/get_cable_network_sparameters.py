@@ -53,5 +53,20 @@ vna.add_OSL(std_key='vna')
 print("Measuring at the top of the cable")
 vna.add_OSL(std_key='cable')
 
+#get vna sparams
+vna_sprms = calkit.sparams(stds_meas = vna.data['vna'])
+sparams = {'vna' : vna_sprms}
+
+#de-embed vna sprms from cable standards
+cable_ref_balun_stds = cal.calibrate(kit=calkit, gammas=vna.data['vna'], sprms_dict= sparams)
+vna.data['cable_ref_vna'] = cable_ref_balun_stds
+
+#get cable sparams
+cable_sprms = calkit.sparams(stds_meas=vna.data['cable_ref_vna'])
+sparams['cable'] = cable_sprms
+
+date = datetime.now().strftime("%Y%m%d_%H%M%S")
+np.savez(f'{args.outdir}/{date}_sparams.npz', **sparams)
+
 vna.write_data(args.outdir)
 
