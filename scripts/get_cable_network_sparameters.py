@@ -58,7 +58,7 @@ vna_sprms = calkit.sparams(stds_meas = vna.data['vna'])
 sparams = {'vna' : vna_sprms}
 
 #de-embed vna sprms from cable standards
-cable_ref_vna_stds = cal.calibrate(kit=calkit, gammas=vna.data['vna'], sprms_dict= sparams)
+cable_ref_vna_stds = cal.calibrate(kit=calkit, gammas=vna.data['cable'], sprms_dict= sparams)
 vna.data['cable_ref_vna'] = cable_ref_vna_stds
 
 #get cable sparams
