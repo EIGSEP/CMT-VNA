@@ -4,7 +4,7 @@ from . import calkit as cal
 import pyvisa
 import time
 from datetime import datetime
-
+from switch_network import SwitchNetwork
 IP = "127.0.0.1"
 PORT = 5025
 
@@ -97,15 +97,18 @@ class VNA:
 
         OSL = dict()
         standards = ['open', 'short', 'load'] #set osl standard list
+        if auto:
+            snw = SwitchNetwork()
         for standard in standards:
-             if not auto: #testing/manual osl measurements
-                 print(f'connect {standard} and press enter')
-                 input() 
-             elif auto:#automatic osl measurements
-                 print('doing switch network things')
-                 #TODO: do switch network stuff
-             data = self.measure_S11()
-             OSL[standard] = data
+            if not auto: #testing/manual osl measurements
+                print(f'connect {standard} and press enter')
+                input() 
+            elif auto:#automatic osl measurements
+                snw.switch(standard)
+                data = self.measure_S11()
+                OSL[standard] = data
+        if auto:
+            snw.powerdown()
         return OSL
 
     def add_OSL(self, std_key='vna', overwrite=False, auto=False): 
