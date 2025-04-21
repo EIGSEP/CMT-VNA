@@ -1,10 +1,10 @@
 import numpy as np
+from .calkit import S911T
+from . import calkit as cal
 import pyvisa
 import time
 from datetime import datetime
-from .calkit import S911T
-import mistdata.cal_s11 as cal
-
+from switch_network import SwitchNetwork
 IP = "127.0.0.1"
 PORT = 5025
 
@@ -16,6 +16,7 @@ class VNA:
         self.s = self.rm.open_resource(f"TCPIP::{ip}::{port}::SOCKET")
         self.s.read_termination = "\n"
         self.s.timeout = to
+        self._clear_data()
 
     @property
     def id(self):
@@ -28,12 +29,15 @@ class VNA:
         """
         return self.s.query("*OPC?\n")
 
+    def _clear_data(self):
+        self.data = dict()
+        self.stds_meta = dict()
+
     def setup(self, fstart=1e6, fstop=250e6, npoints=1000, ifbw=100, power_dBm=0):
         """
         Setup S11 measurement.
 
-        Parameters
-        ----------
+        IN
         fstart : float
             Start frequency in Hz
         fstop : float
@@ -45,6 +49,8 @@ class VNA:
         power_dBm : float
             Power level in dBm
 
+        OUT
+        adds freqs attribute to vna object. returns freqs array as well.
         """
         self.s.write(
             "FORM:DATA REAL\n"
@@ -68,19 +74,15 @@ class VNA:
         self.s.write("TRIG:SOUR BUS\n")
         freq = self.s.query_binary_values('SENS1:FREQ:DATA?', container=np.array, is_big_endian=True, datatype='d')
         freq = [float(i) for i in freq]
-        return freq
+        self.freqs = np.array(freq)
+        return np.array(freq)
 
     def measure_S11(self, verbose = False):
         '''
-        Get S11 measurement. Can be used for standards and antenna measurements. 
-
-        verbose : boolean (Default = False).
-             If true, prints time it took for sweep.
-
-        Returns : numpy array of complex S11 measurement.
+        Get S11 measurement (complex). Can be used for standards and antenna measurements. 
         '''
         t0 = time.time()
-        self.s.write('TRIG:SEQ:SING')
+        self.s.write('TRIG:SEQ:SING') #sweep
         if self.opc and verbose: #check if the sweep is done before proceeding
              print('swept')
         data = self.s.query_binary_values('CALC:TRAC:DATA:FDAT?', container=np.array, is_big_endian=True, datatype='d')#query the values
@@ -88,50 +90,61 @@ class VNA:
              print(f'{time.time() - t0 : .2f} seconds to sweep.')
         data = np.array([float(i) for i in data]) #change to complex floats
         data = data[0::2] + 1j * data[1::2]
-        return data
+        return data #returns complex data
 
-    def calibrate_OSL(self):
-        '''
-        Iterate through standards for measurement.
+    def measure_OSL(self,auto= False):
+        '''Iterate through all standards for measurement. Returns dictionary with keys 'open', 'short', and 'load'.'''
 
-        Returns : dictionary with keys 'open', 'short', 'load'.
-        '''
+        OSL = dict()
         standards = ['open', 'short', 'load'] #set osl standard list
-        osl_data = dict()
-        #iterate through standards, take data and add to dictionary
+        if auto:
+            snw = SwitchNetwork()
         for standard in standards:
-             print(f'connect {standard} and press enter')
-             input()
-             data = self.measure_S11()
-             osl_data[standard] = data
-        return osl_data
+            if not auto: #testing/manual osl measurements
+                print(f'connect {standard} and press enter')
+                input() 
+            elif auto:#automatic osl measurements
+                snw.switch(standard)
+                data = self.measure_S11()
+                OSL[standard] = data
+        if auto:
+            snw.powerdown()
+        return OSL
 
-    def add_sparams(self, stds_file, kit):
+    def add_OSL(self, std_key='vna', overwrite=False, auto=False): 
         '''
-        Adds sparams attribute to the VNA object.
+        Iterate through standards for measurement. Adds standards measurement to self.stds.
         
         IN
-        stds_file : str 
-            Filename for where the reflection coefficient measurements of each standard is written.
-        kit : calibration kit object
-            For now, it will be an S911T object, which inherits MIST's CalKit object.
+        std_key : key value to assign to the OSL entry in self.stds. default is vna.
+        overwrite : mainly for dev. allows you to overwrite key value pairs in self.stds. 
+        auto : also mainly for dev. if auto is False, you have to manually attach the OSL standards. 
         '''
-        osl = np.load(stds_file)
-        stds_meas = np.vstack([osl['open'], osl['short'], osl['load']])
-        params = kit.sparams(stds_meas=stds_meas)
-        self.sparams = params
+        OSL = self.measure_OSL(auto=auto)
+        self.data[std_key] = np.array(list(OSL.values()))
+        self.stds_meta[std_key] = list(OSL.keys())
 
-    def de_embed(self, gamma_meas):
+    def read_data(self, num_data=1): 
         '''
-        de-embeds the vna's assigned sparams.
-        TODO: generalize to be able to de-embed incrementally. 
+        reads num_data s11s, adds them to self.gammas.
         IN
-        gamma_meas : np.array (1, N)
-            Measured reflection coefficient to be calibrated.
-        OUT
-        np.array (1, N)
-            calibrated measurement.
+        num_data : number of measurements to take in a sitting.
         '''
-        sprms = self.sparams
-        gamma_cal = cal.de_embed_sparams(sprms, gamma_meas)
-        return gamma_cal
+        i = 0
+        while i < num_data:
+            i += 1 
+            gamma = self.measure_S11()
+            date = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.data[f'{date}_gamma'] = gamma
+    
+    def write_data(self, outdir, save_stds=True): 
+        '''
+        writes ALL the data in vna to an npz and saves to npzs. clears the data out of the vna object. 
+        '''
+        date = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        
+        self.data['freqs'] = self.freqs #adds the frequency array to the gammas dict
+        np.savez(f'{outdir}/{date}_data.npz', **self.data)
+        self._clear_data()
+
