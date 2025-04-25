@@ -27,7 +27,7 @@ def impedance_to_gamma(Z, Z0):
 
     """
     gamma = np.atleast_1d((Z - Z0) / (Z + Z0))
-    gamma[np.where(np.isinf(Z))] = 1
+    gamma[np.isinf(Z)] = 1
     if np.isscalar(Z):
         return gamma[0]
     return gamma
@@ -189,7 +189,7 @@ def de_embed_sparams(sparams, gamma_prime):
     gamma = d / (s12s21 + s22 * d)
     return gamma
 
-def calibrate(kit, gammas, sprms_dict):
+def calibrate(gammas, sprms_dict):
     '''calibrates all gammas in gammas dict with respect to all sparams in sprms dict. Applicable to both gammas and standards.
 
         IN

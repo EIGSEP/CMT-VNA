@@ -1,12 +1,11 @@
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from datetime import datetime
 import numpy as np
-import time
 from cmt_vna import VNA
 from cmt_vna import calkit as cal
-import matplotlib.pyplot as plt
 import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
 
 parser = ArgumentParser(
     description="Measure S11 of a DUT connected to a VNA.",
@@ -28,7 +27,10 @@ parser.add_argument(
     "--power", type=float, default=-40, help="Power level in dBm."
 )
 parser.add_argument(
-    "--outdir", type=str, default="/home/charlie/eigsep/CMT-VNA/data", help="Output directory."
+    "--outdir",
+    type=str,
+    default="/home/charlie/eigsep/CMT-VNA/data",
+    help="Output directory.",
 )
 
 args = parser.parse_args()
@@ -44,29 +46,30 @@ freq = vna.setup(
     power_dBm=args.power,
 )
 
-calkit = cal.S911T(freq_Hz = freq)
+calkit = cal.S911T(freq_Hz=freq)
 model_stds = calkit.std_gamma
 
-print('Measuring standards at the VNA port')
-vna.add_OSL(std_key='vna')
+print("Measuring standards at the VNA port")
+vna.add_OSL(std_key="vna")
 
 print("Measuring at the top of the cable")
-vna.add_OSL(std_key='cable')
+vna.add_OSL(std_key="cable")
 
-#get vna sparams
-vna_sprms = calkit.sparams(stds_meas = vna.data['vna'])
-sparams = {'vna' : vna_sprms}
+# get vna sparams
+vna_sprms = calkit.sparams(stds_meas=vna.data["vna"])
+sparams = {"vna": vna_sprms}
 
-#de-embed vna sprms from cable standards
-cable_ref_vna_stds = cal.calibrate(kit=calkit, gammas=vna.data['cable'], sprms_dict= sparams)
-vna.data['cable_ref_vna'] = cable_ref_vna_stds
+# de-embed vna sprms from cable standards
+cable_ref_vna_stds = cal.calibrate(
+    kit=calkit, gammas=vna.data["cable"], sprms_dict=sparams
+)
+vna.data["cable_ref_vna"] = cable_ref_vna_stds
 
-#get cable sparams
-cable_sprms = calkit.sparams(stds_meas=vna.data['cable_ref_vna'])
-sparams['cable'] = cable_sprms
+# get cable sparams
+cable_sprms = calkit.sparams(stds_meas=vna.data["cable_ref_vna"])
+sparams["cable"] = cable_sprms
 
 date = datetime.now().strftime("%Y%m%d_%H%M%S")
-np.savez(f'{args.outdir}/{date}_sparams.npz', **sparams)
+np.savez(f"{args.outdir}/{date}_sparams.npz", **sparams)
 
 vna.write_data(args.outdir)
-
