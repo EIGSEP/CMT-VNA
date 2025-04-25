@@ -53,9 +53,6 @@ class VNA:
         adds freqs attribute to vna object. returns freqs array as well.
         """
         self.s.write(
-            "FORM:DATA REAL\n"
-        )  # get data as 64-bit binary values
-        self.s.write(
             "CALC:FORM SCOM\n"
         )  # get s11 as real and imag
         self.s.write(
@@ -72,7 +69,7 @@ class VNA:
         self.s.write(f"SENS1:SWE:POIN {npoints}\n")
         self.s.write(f"SENS1:BWID {ifbw} HZ\n")
         self.s.write("TRIG:SOUR BUS\n")
-        freq = self.s.query_binary_values('SENS1:FREQ:DATA?', container=np.array, is_big_endian=True, datatype='d')
+        freq = self.s.query_ascii_values('SENS1:FREQ:DATA?', container=np.array)
         freq = [float(i) for i in freq]
         self.freqs = np.array(freq)
         return np.array(freq)
@@ -85,7 +82,7 @@ class VNA:
         self.s.write('TRIG:SEQ:SING') #sweep
         if self.opc and verbose: #check if the sweep is done before proceeding
              print('swept')
-        data = self.s.query_binary_values('CALC:TRAC:DATA:FDAT?', container=np.array, is_big_endian=True, datatype='d')#query the values
+        data = self.s.query_ascii_values('CALC:TRAC:DATA:FDAT?', container=np.array) 
         if self.opc and verbose: #if verbose and the query is done, print time
              print(f'{time.time() - t0 : .2f} seconds to sweep.')
         data = np.array([float(i) for i in data]) #change to complex floats
