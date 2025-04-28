@@ -33,7 +33,7 @@ class VNA:
         self.data = dict()
         self.stds_meta = dict()
 
-    def setup(self, fstart=1e6, fstop=250e6, npoints=1000, ifbw=100, power_dBm=0):
+    def setup(self, fstart=1e6, fstop=250e6, npoints=1000, ifbw=100, power_dBm=0, source='BUS'):
         """
         Setup S11 measurement.
 
@@ -68,7 +68,7 @@ class VNA:
         self.s.write(f"SENS1:FREQ:STOP {fstop} HZ\n")
         self.s.write(f"SENS1:SWE:POIN {npoints}\n")
         self.s.write(f"SENS1:BWID {ifbw} HZ\n")
-        self.s.write("TRIG:SOUR BUS\n")
+        self.s.write("TRIG:SOUR {source}\n")
         freq = self.s.query_ascii_values('SENS1:FREQ:DATA?', container=np.array)
         freq = [float(i) for i in freq]
         self.freqs = np.array(freq)
