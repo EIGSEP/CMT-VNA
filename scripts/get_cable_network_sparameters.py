@@ -2,6 +2,7 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from datetime import datetime
 import numpy as np
 from cmt_vna import VNA
+from switch_network import SwitchNetwork
 from cmt_vna import calkit as cal
 import warnings
 
@@ -35,6 +36,8 @@ parser.add_argument(
 
 args = parser.parse_args()
 
+sparams_to_find = ['VNAANT', 'VNAN', 'VNAO', 'VNAS', 'VNAL']
+
 i = 0
 vna = VNA(ip="127.0.0.1", port=5025)
 print(f"Connected to {vna.id}.")
@@ -45,31 +48,35 @@ freq = vna.setup(
     ifbw=args.ifbw,
     power_dBm=args.power,
 )
-
+snw = SwitchNetwork()
 calkit = cal.S911T(freq_Hz=freq)
 model_stds = calkit.std_gamma
 
 print("Measuring standards at the VNA port")
-vna.add_OSL(std_key="vna")
-
-print("Measuring at the top of the cable")
-vna.add_OSL(std_key="cable")
-
-# get vna sparams
-vna_sprms = calkit.sparams(stds_meas=vna.data["vna"])
-sparams = {"vna": vna_sprms}
-
-# de-embed vna sprms from cable standards
-cable_ref_vna_stds = cal.calibrate(
-    kit=calkit, gammas=vna.data["cable"], sprms_dict=sparams
-)
-vna.data["cable_ref_vna"] = cable_ref_vna_stds
-
-# get cable sparams
-cable_sprms = calkit.sparams(stds_meas=vna.data["cable_ref_vna"])
-sparams["cable"] = cable_sprms
-
-date = datetime.now().strftime("%Y%m%d_%H%M%S")
-np.savez(f"{args.outdir}/{date}_sparams.npz", **sparams)
-
-vna.write_data(args.outdir)
+vna.add_OSL(snw=snw, std_key="vna")
+try:
+    for n in sparams_to_find:
+        snw.switch(n, verbose=True) 
+        print(f"Measuring at the top of the nw {n}")
+        vna.add_OSL(snw=snw, std_key=f"{n}")
+        
+        # get vna sparams
+        vna_sprms = calkit.sparams(stds_meas=vna.data["vna"])
+        sparams = {"vna": vna_sprms}
+        
+        # de-embed vna sprms from nw standards
+        nw_ref_vna_stds = cal.calibrate(
+            gammas=vna.data[f"{n}"], sprms_dict=sparams
+        )
+        vna.data[f"{n}_ref_vna"] = nw_ref_vna_stds
+        
+        # get nw sparams
+        nw_sprms = calkit.sparams(stds_meas=vna.data[f"{n}_ref_vna"])
+        sparams[f"{n}"] = nw_sprms
+        
+        date = datetime.now().strftime("%Y%m%d_%H%M%S")
+        np.savez(f"{args.outdir}/{date}_{n}_sparams.npz", **sparams)
+except KeyboardInterrupt:
+    print('exiting...')
+finally:
+    vna.write_data(args.outdir)

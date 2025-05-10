@@ -89,26 +89,24 @@ class VNA:
         data = data[0::2] + 1j * data[1::2]
         return data #returns complex data
 
-    def measure_OSL(self,auto= False):
+    def measure_OSL(self, snw=None, auto= False):
         '''Iterate through all standards for measurement. Returns dictionary with keys 'open', 'short', and 'load'.'''
-
-        OSL = dict()
-        standards = ['open', 'short', 'load'] #set osl standard list
+        
         if auto:
-            snw = SwitchNetwork()
+            assert snw is not None
+        OSL = dict()
+        standards = ['VNAO', 'VNAS', 'VNAL'] #set osl standard list
         for standard in standards:
             if not auto: #testing/manual osl measurements
                 print(f'connect {standard} and press enter')
                 input() 
             elif auto:#automatic osl measurements
                 snw.switch(standard)
-                data = self.measure_S11()
-                OSL[standard] = data
-        if auto:
-            snw.powerdown()
+            data = self.measure_S11()
+            OSL[standard] = data
         return OSL
 
-    def add_OSL(self, std_key='vna', overwrite=False, auto=False): 
+    def add_OSL(self, snw, std_key='vna', overwrite=False, auto=False): 
         '''
         Iterate through standards for measurement. Adds standards measurement to self.stds.
         
@@ -117,7 +115,7 @@ class VNA:
         overwrite : mainly for dev. allows you to overwrite key value pairs in self.stds. 
         auto : also mainly for dev. if auto is False, you have to manually attach the OSL standards. 
         '''
-        OSL = self.measure_OSL(auto=auto)
+        OSL = self.measure_OSL(auto=auto, snw=snw)
         self.data[std_key] = np.array(list(OSL.values()))
         self.stds_meta[std_key] = list(OSL.keys())
 
