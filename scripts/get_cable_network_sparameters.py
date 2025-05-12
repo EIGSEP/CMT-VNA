@@ -1,3 +1,5 @@
+'''Script for finding the s-parameters of a cable network.Takes OSL standards measurements at the vna port and then OSL standards for each string in the list variable sparams_to_find. Saves the s-parameters of network represented to separate npzs, then writes all the OSL standards measured to another file.
+'''
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from datetime import datetime
 import numpy as np
@@ -9,7 +11,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 parser = ArgumentParser(
-    description="Measure S11 of a DUT connected to a VNA.",
+    description='Script for finding the s-parameters of a cable network.', 
     formatter_class=ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
