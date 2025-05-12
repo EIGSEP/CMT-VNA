@@ -121,7 +121,7 @@ class VNA:
         snw : switch network object that we pass into measure_OSL to use for switching. Default is None.
         std_key : key value to assign to the OSL entry in self.stds. default is vna.
         '''
-        OSL = self.measure_OSL(auto=auto, snw=snw)
+        OSL = self.measure_OSL(snw=snw)
         self.data[std_key] = np.array(list(OSL.values()))
         self.stds_meta[std_key] = list(OSL.keys())
 
