@@ -380,6 +380,15 @@ class CalKit:
         self.match = self._add_standard(Z_match, delta_1ghz, delay)
 
 class BasicLoadStandard:
+    '''I don't have a good model for my load standard, so I made something temporary but compatible. 
+        
+        Parameters
+        impedance : the impedance of your load. generally is 50Ohm. 
+        Z0 : the characteristic impedance of your system. default is 50Ohm.
+
+        Properties
+        gamma : calls impedance_to_gamma on the impedance of the load and Z0. 
+    '''
     def __init__(self, impedance, Z0=50):
         self.impedance = impedance
         self.Z0 = Z0
