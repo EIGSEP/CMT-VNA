@@ -88,8 +88,11 @@ while i < args.max_files:
 
     except KeyboardInterrupt:
         break
+        snw.powerdown()
     finally:
         i += 1
         vna.write_data(outdir=args.outdir)
         time.sleep(args.cadence)
         print("finished writing")
+
+snw.powerdown()
