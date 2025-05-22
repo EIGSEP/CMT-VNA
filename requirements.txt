@@ -1,5 +1,5 @@
 matplotlib==3.10.1
 numpy==2.2.4
 PyVISA==1.14.1
-setuptools==75.8.0
+setuptools==78.1.1
 switch_network==0.0.1
