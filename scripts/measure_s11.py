@@ -1,7 +1,7 @@
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import time
+from switch_network import SwitchNetwork
 from cmt_vna import VNA
-from cmt_vna import calkit as cal
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -70,25 +70,23 @@ freq = vna.setup(
     power_dBm=args.power,
 )
 
+snw = SwitchNetwork()  # make switch network object
+
 i = 0
-while i < args.max_files:
-    if args.osl:  # measures standards, saves them to vna object
-        calkit = cal.S911T(freq_Hz=freq)
-        vna.add_OSL(std_key="vna")
-        print("Calibration complete.")
 
-    print("Connect DUT and hit enter")
-    input()
+try:
+    for i in range(args.max_files):
+        if args.osl:  # measures standards, saves them to vna object
+            vna.add_OSL(snw=snw, std_key="vna")
+            snw.switch("VNAANT")
 
-    try:
-        print("reading")
+        print(f"reading file {i+1} of {args.max_files}")
         vna.read_data(num_data=args.num_data)
-        print("done reading")
-
-    except KeyboardInterrupt:
-        break
-    finally:
-        i += 1
         vna.write_data(outdir=args.outdir)
-        time.sleep(args.cadence)
         print("finished writing")
+        time.sleep(args.cadence)
+except KeyboardInterrupt:
+    print("Keyboard interrupt, exiting.")
+    vna.write_data(outdir=args.outdir)  # short final write
+finally:
+    snw.powerdown()
