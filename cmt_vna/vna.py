@@ -37,12 +37,25 @@ class VNA:
     def id(self):
         return self.s.query("*IDN?\n")
 
-    @property
-    def opc(self):
+    def wait_for_opc(self):
         """
-        Query operation complete status
+        Query operation complete status. Blocks until complete.
+
+        Raises
+        -------
+        TimeoutError
+            If the operation does not complete within the timeout period. See
+            the attribute timeout in the constructor.
+
         """
-        return self.s.query("*OPC?\n")
+        try:
+            _ = self.s.query("*OPC?\n")
+        except pyvisa.VisaIOError as e:
+            if e.error_code == pyvisa.constants.StausCode.error_timeout:
+                raise TimeoutError(
+                    "Operation did not complete within the timeout period."
+                ) from e
+            raise
 
     def _clear_data(self):
         self.data = dict()
@@ -100,12 +113,14 @@ class VNA:
         """
         t0 = time.time()
         self.s.write("TRIG:SEQ:SING")  # sweep
-        if self.opc and verbose:
+        self.wait_for_opc()  # wait for operation complete
+        if verbose:
             print("swept")
         data = self.s.query_ascii_values(
             "CALC:TRAC:DATA:FDAT?", container=np.array
         )
-        if self.opc and verbose:
+        self.wait_for_opc()  # wait for operation complete
+        if verbose:
             sweep_time = time.time() - t0
             print(f"{sweep_time:.2f} seconds to sweep.")
         data = np.array([float(i) for i in data])  # change to complex floats
