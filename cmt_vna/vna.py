@@ -33,9 +33,72 @@ class VNA:
         self.s.timeout = timeout * 1e3  # convert to milliseconds
         self._clear_data()
 
+        # attributes
+        self._fstart = None
+        self._fstop = None
+        self._npoints = None
+        self._ifbw = None
+        self._power_dBm = None
+
     @property
     def id(self):
         return self.s.query("*IDN?\n")
+
+    @property
+    def fstart(self):
+        return self._fstart
+
+    @fstart.setter
+    def fstart(self, value):
+        self._fstart = value
+        self.s.write(f"SENS1:FREQ:STAR {value} HZ\n")
+
+    @property
+    def fstop(self):
+        return self._fstop
+
+    @fstop.setter
+    def fstop(self, value):
+        self._fstop = value
+        self.s.write(f"SENS1:FREQ:STOP {value} HZ\n")
+
+    @property
+    def npoints(self):
+        return self._npoints
+
+    @npoints.setter
+    def npoints(self, value):
+        self._npoints = value
+        self.s.write(f"SENS1:SWE:POIN {value}\n")
+
+    @property
+    def ifbw(self):
+        return self._ifbw
+
+    @ifbw.setter
+    def ifbw(self, value):
+        self._ifbw = value
+        self.s.write(f"SENS1:BWID {value} HZ\n")
+
+    @property
+    def power_dBm(self):
+        return self._power_dBm
+
+    @power_dBm.setter
+    def power_dBm(self, value):
+        self._power_dBm = value
+        self.s.write(f"SOUR:POW {value}\n")
+
+    @property
+    def freqs(self):
+        freq = self.s.query_ascii_values(
+            "SENS1:FREQ:DATA?", container=np.array
+        )
+        try:
+            f_array = np.array([float(i) for i in freq])
+        except (TypeError, ValueError):
+            f_array = None
+        return f_array
 
     def wait_for_opc(self):
         """
@@ -67,7 +130,8 @@ class VNA:
         """
         Setup S11 measurement.
 
-        IN
+        Parameters
+        ----------
         fstart : float
             Start frequency in Hz
         fstop : float
@@ -79,26 +143,23 @@ class VNA:
         power_dBm : float
             Power level in dBm
 
-        OUT
-        adds freqs attribute to vna object. returns freqs array as well.
+        Returns
+        -------
+        freq : np.ndarray
+            Frequency array in Hz
+
         """
         self.s.write("CALC:FORM SCOM\n")  # get s11 as real and imag
-        self.s.write(f"SOUR:POW {power_dBm}\n")  # power level
+        self.power_dBm = power_dBm
         self.s.write("SENS1:AVER:COUN 1\n")  # number of averages
-        self.s.write(
-            "SWE:TYPE LIN\n"
-        )  # linear sweep instead of point by point
-        self.s.write(f"SENS1:FREQ:STAR {fstart} HZ\n")
-        self.s.write(f"SENS1:FREQ:STOP {fstop} HZ\n")
-        self.s.write(f"SENS1:SWE:POIN {npoints}\n")
-        self.s.write(f"SENS1:BWID {ifbw} HZ\n")
+        # linear sweep instead of point by point
+        self.s.write("SWE:TYPE LIN\n")
+        self.fstart = fstart
+        self.fstop = fstop
+        self.npoints = npoints
+        self.ifbw = ifbw
         self.s.write("TRIG:SOUR BUS\n")
-        freq = self.s.query_ascii_values(
-            "SENS1:FREQ:DATA?", container=np.array
-        )
-        freq = [float(i) for i in freq]
-        self.freqs = np.array(freq)
-        return np.array(freq)
+        return self.freqs
 
     def measure_S11(self, verbose=False):
         """
