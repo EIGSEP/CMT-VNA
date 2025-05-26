@@ -271,14 +271,8 @@ class VNA:
         # create filename with date and time
         date = datetime.now().strftime("%Y%m%d_%H%M%S")
         fname = Path(f"{date}_vna_data.npz")
-        if outdir is None:
-            outdir = self.save_dir
-        if isinstance(outdir, Path):
-            fpath = outdir / fname
-        elif isinstance(outdir, str):
-            fpath = Path(outdir) / fname
-        else:
-            raise TypeError("outdir must be a Path or str")
+        base_dir = Path(outdir or self.save_dir)
+        fpath = base_dir / fname
         # save data to npz file
         np.savez(fpath, **self.data)
         # reset data
