@@ -1,7 +1,8 @@
+from datetime import datetime
 import numpy as np
+from pathlib import Path
 import pyvisa
 import time
-from datetime import datetime
 
 
 IP = "127.0.0.1"
@@ -10,7 +11,7 @@ PORT = 5025
 
 class VNA:
 
-    def __init__(self, ip=IP, port=PORT, timeout=1000):
+    def __init__(self, ip=IP, port=PORT, timeout=1000, save_dir=Path(".")):
         """
         Class controlling Copper Mountain VNA.
 
@@ -24,6 +25,9 @@ class VNA:
             Timeout in seconds for VNA communication. Needs to be long enough
             to complete the measurement. If None, no timeout is set and we
             wait indefinitely for a response.
+        save_dir : Path or str
+            Directory to save data to. Must be able to instantiate a Path
+            object.
 
         """
 
@@ -32,6 +36,7 @@ class VNA:
         self.s.read_termination = "\n"
         self.s.timeout = timeout * 1e3  # convert to milliseconds
         self._clear_data()
+        self.save_dir = Path(save_dir)
 
         # attributes
         self._fstart = None
@@ -249,23 +254,26 @@ class VNA:
             date = datetime.now().strftime("%Y%m%d_%H%M%S")
             self.data[f"{date}_gamma"] = gamma
 
-    def write_data(self, outdir, save_stds=True):
+    def write_data(self, outdir=None):
         """
         Write all the data in vna to an npz. Clear the data out of the vna
         object.
 
         Parameters
         ----------
-        outdir : str
-            Directory to save the data to.
-        save_stds : bool
-            If True, saves the standards data to the npz file. If False,
-            does not save the standards data.
+        outdir : Path or str
+            Directory to save the data to. If None, uses the save_dir
+            attribute.
 
         """
-        date = datetime.now().strftime("%Y%m%d_%H%M%S")
-
         # adds the frequency array to the gammas dict
         self.data["freqs"] = self.freqs
-        np.savez(f"{outdir}/{date}_data.npz", **self.data)
+        # create filename with date and time
+        date = datetime.now().strftime("%Y%m%d_%H%M%S")
+        fname = Path(f"{date}_vna_data.npz")
+        base_dir = Path(outdir or self.save_dir)
+        fpath = base_dir / fname
+        # save data to npz file
+        np.savez(fpath, **self.data)
+        # reset data
         self._clear_data()
