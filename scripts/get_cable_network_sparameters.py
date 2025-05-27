@@ -41,7 +41,8 @@ args = parser.parse_args()
 sparams_to_find = ['VNAANT', 'VNAN', 'VNAO', 'VNAS', 'VNAL']
 
 i = 0
-vna = VNA(ip="127.0.0.1", port=5025)
+snw = SwitchNetwork()
+vna = VNA(ip="127.0.0.1", port=5025, switch_network=snw)
 print(f"Connected to {vna.id}.")
 freq = vna.setup(
     fstart=args.fstart,
@@ -50,17 +51,16 @@ freq = vna.setup(
     ifbw=args.ifbw,
     power_dBm=args.power,
 )
-snw = SwitchNetwork()
 calkit = cal.S911T(freq_Hz=freq)
 model_stds = calkit.std_gamma
 
 print("Measuring standards at the VNA port")
-vna.add_OSL(snw=snw, std_key="vna")
+vna.add_OSL(std_key="vna")
 try:
     for n in sparams_to_find:
         snw.switch(n, verbose=True) 
         print(f"Measuring at the top of the nw {n}")
-        vna.add_OSL(snw=snw, std_key=f"{n}")
+        vna.add_OSL(std_key=f"{n}")
         
         # get vna sparams
         vna_sprms = calkit.sparams(stds_meas=vna.data["vna"])

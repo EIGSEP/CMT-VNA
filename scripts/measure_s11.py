@@ -59,7 +59,8 @@ parser.add_argument(
     help="Number of datasets to take each time.",
 )
 args = parser.parse_args()
-vna = VNA(ip="127.0.0.1", port=5025)
+snw = SwitchNetwork()  # make switch network object
+vna = VNA(ip="127.0.0.1", port=5025, switch_network=snw)
 print(f"Connected to {vna.id}.")
 
 freq = vna.setup(
@@ -70,14 +71,13 @@ freq = vna.setup(
     power_dBm=args.power,
 )
 
-snw = SwitchNetwork()  # make switch network object
 
 i = 0
 
 try:
     for i in range(args.max_files):
         if args.osl:  # measures standards, saves them to vna object
-            vna.add_OSL(snw=snw, std_key="vna")
+            vna.add_OSL(std_key="vna")
             snw.switch("VNAANT")
 
         print(f"reading file {i+1} of {args.max_files}")

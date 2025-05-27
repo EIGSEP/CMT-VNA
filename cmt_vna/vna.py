@@ -11,7 +11,14 @@ PORT = 5025
 
 class VNA:
 
-    def __init__(self, ip=IP, port=PORT, timeout=1000, save_dir=Path(".")):
+    def __init__(
+        self,
+        ip=IP,
+        port=PORT,
+        timeout=1000,
+        save_dir=Path("."),
+        switch_network=None,
+    ):
         """
         Class controlling Copper Mountain VNA.
 
@@ -28,6 +35,9 @@ class VNA:
         save_dir : Path or str
             Directory to save data to. Must be able to instantiate a Path
             object.
+        switch_network : switch_network.SwitchNetwork or None
+            Instance of SwitchNetwork to automatically switch the DUT or
+            standards. If None, assumes switching is done in another way.
 
         """
 
@@ -37,6 +47,7 @@ class VNA:
         self.s.timeout = timeout * 1e3  # convert to milliseconds
         self._clear_data()
         self.save_dir = Path(save_dir)
+        self.switch_nw = switch_network
 
         # attributes
         self._fstart = None
@@ -122,6 +133,29 @@ class VNA:
             f_array = None
         return f_array
 
+    @property
+    def metadata(self):
+        """
+        Get metadata of the VNA settings.
+
+        Returns
+        -------
+        metadata : dict
+            Dictionary with keys 'fstart', 'fstop', 'npoints', 'ifbw',
+            'power_dBm', and 'freqs'. The values are the corresponding
+            settings of the VNA.
+
+        """
+        metadata = {
+            "fstart": self.fstart,
+            "fstop": self.fstop,
+            "npoints": self.npoints,
+            "ifbw": self.ifbw,
+            "power_dBm": self.power_dBm,
+            "freqs": self.freqs,
+        }
+        return metadata
+
     def wait_for_opc(self):
         """
         Query operation complete status. Blocks until complete.
@@ -205,15 +239,9 @@ class VNA:
         data = data[0::2] + 1j * data[1::2]
         return data  # returns complex data
 
-    def measure_OSL(self, snw=None):
+    def measure_OSL(self):
         """
         Iterate through all standards for measurement.
-
-        Parameters
-        ----------
-        snw : switch_network.SwitchNetwork
-            Instance of SwitchNetwork to automatically switch between
-            standard. If None, you will have to manually attach standards.
 
         Returns
         -------
@@ -226,32 +254,88 @@ class VNA:
         OSL = dict()
         standards = ["VNAO", "VNAS", "VNAL"]  # set osl standard list
         for standard in standards:
-            if snw is None:  # testing/manual osl measurements
+            if self.switch_nw is None:  # testing/manual osl measurements
                 print(f"connect {standard} and press enter")
                 input()
             else:  # automatic osl measurements
-                snw.switch(standard)
+                self.switch_nw.switch(standard)
             data = self.measure_S11()
             OSL[standard] = data
         return OSL
 
-    def add_OSL(self, snw=None, std_key="vna"):
+    def add_OSL(self, std_key="vna"):
         """
         Call measure_OSL to iterate through standards. Adds standards
         measurement to self.data.
 
         Parameters
         ----------
-        snw : switch_network.SwitchNetwork
-            Instance of SwitchNetwork to automatically switch between
-            standards. If None, you will have to manually attach standards.
         std_key : str
             Key value to assign to the OSL entry in self.stds.
 
         """
-        OSL = self.measure_OSL(snw=snw)
+        OSL = self.measure_OSL()
         self.data[std_key] = np.array(list(OSL.values()))
         self.stds_meta[std_key] = list(OSL.keys())
+
+    def measure_ant(self, measure_noise=True):
+        """
+        Measure S11 of antenna. If measure_noise is True, also measures
+        S11 of noise source. This is a convenience function that uses the
+        switch network to switch to the right DUT. It therefore requires
+        the switch_nw attribute to be set.
+
+        Parameters
+        ----------
+        measure_noise : bool
+            If True, measures S11 of noise source. If False, only measures
+            S11 of antenna.
+
+        Returns
+        -------
+        s11 : dict
+            Dictionary with keys 'ant' and 'noise' (if measure_noise is True).
+
+        Raises
+        -------
+        RuntimeError
+            If the attribute switch_nw is None.
+
+        """
+        if self.switch_nw is None:
+            raise RuntimeError("No switch network set, cannot measure S11.")
+        s11 = {}
+        self.switch_nw.switch("VNAANT")  # switch to antenna
+        s11["ant"] = self.measure_S11()
+        if measure_noise:
+            self.switch_nw.switch("VNAN")  # switch to noise source
+            s11["noise"] = self.measure_S11()
+        return s11
+
+    def measure_rec(self):
+        """
+        Measure S11 of the receiver. This is a convenience function that uses
+        the switch network to switch to the right DUT. It therefore requires
+        the switch_nw attribute to be set.
+
+        Returns
+        -------
+        s11 : dict
+            Dictionary with key 'rec' containing the S11 measurement of the
+            receiver.
+
+        Raises
+        -------
+        RuntimeError
+            If the attribute switch_nw is None.
+
+        """
+        if self.switch_nw is None:
+            raise RuntimeError("No switch network set, cannot measure S11.")
+        s11 = {}
+        self.switch_nw.switch("VNARF")  # switch to receiver
+        s11["rec"] = self.measure_S11()
+        return s11
 
     def read_data(self, num_data=1):
         """
