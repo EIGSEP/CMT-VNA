@@ -45,6 +45,13 @@ class VNA:
         self._ifbw = None
         self._power_dBm = None
 
+        # settings
+        self.s.write("CALC:FORM SCOM\n")  # get s11 as real and imag
+        self.s.write("SENS1:AVER:COUN 1\n")  # number of averages
+        # linear sweep instead of point by point
+        self.s.write("SWE:TYPE LIN\n")
+        self.s.write("TRIG:SOUR BUS\n")
+
     @property
     def id(self):
         return self.s.query("*IDN?\n")
@@ -55,8 +62,10 @@ class VNA:
 
     @fstart.setter
     def fstart(self, value):
-        self._fstart = value
+        if self._fstart == value:
+            return
         self.s.write(f"SENS1:FREQ:STAR {value} HZ\n")
+        self._fstart = value
 
     @property
     def fstop(self):
@@ -64,8 +73,10 @@ class VNA:
 
     @fstop.setter
     def fstop(self, value):
-        self._fstop = value
+        if self._fstop == value:
+            return
         self.s.write(f"SENS1:FREQ:STOP {value} HZ\n")
+        self._fstop = value
 
     @property
     def npoints(self):
@@ -73,8 +84,10 @@ class VNA:
 
     @npoints.setter
     def npoints(self, value):
-        self._npoints = value
+        if self._npoints == value:
+            return
         self.s.write(f"SENS1:SWE:POIN {value}\n")
+        self._npoints = value
 
     @property
     def ifbw(self):
@@ -82,8 +95,10 @@ class VNA:
 
     @ifbw.setter
     def ifbw(self, value):
-        self._ifbw = value
+        if self._ifbw == value:
+            return
         self.s.write(f"SENS1:BWID {value} HZ\n")
+        self._ifbw = value
 
     @property
     def power_dBm(self):
@@ -91,8 +106,10 @@ class VNA:
 
     @power_dBm.setter
     def power_dBm(self, value):
-        self._power_dBm = value
+        if self._power_dBm == value:
+            return
         self.s.write(f"SOUR:POW {value}\n")
+        self._power_dBm = value
 
     @property
     def freqs(self):
@@ -154,16 +171,11 @@ class VNA:
             Frequency array in Hz
 
         """
-        self.s.write("CALC:FORM SCOM\n")  # get s11 as real and imag
         self.power_dBm = power_dBm
-        self.s.write("SENS1:AVER:COUN 1\n")  # number of averages
-        # linear sweep instead of point by point
-        self.s.write("SWE:TYPE LIN\n")
         self.fstart = fstart
         self.fstop = fstop
         self.npoints = npoints
         self.ifbw = ifbw
-        self.s.write("TRIG:SOUR BUS\n")
         return self.freqs
 
     def measure_S11(self, verbose=False):
