@@ -133,6 +133,29 @@ class VNA:
             f_array = None
         return f_array
 
+    @property
+    def metadata(self):
+        """
+        Get metadata of the VNA settings.
+
+        Returns
+        -------
+        metadata : dict
+            Dictionary with keys 'fstart', 'fstop', 'npoints', 'ifbw',
+            'power_dBm', and 'freqs'. The values are the corresponding
+            settings of the VNA.
+
+        """
+        metadata = {
+            "fstart": self.fstart,
+            "fstop": self.fstop,
+            "npoints": self.npoints,
+            "ifbw": self.ifbw,
+            "power_dBm": self.power_dBm,
+            "freqs": self.freqs,
+        }
+        return metadata
+
     def wait_for_opc(self):
         """
         Query operation complete status. Blocks until complete.
