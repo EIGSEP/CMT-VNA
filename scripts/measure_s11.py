@@ -71,9 +71,6 @@ freq = vna.setup(
     power_dBm=args.power,
 )
 
-
-i = 0
-
 try:
     for i in range(args.max_files):
         if args.osl:  # measures standards, saves them to vna object
