@@ -1,8 +1,9 @@
 from datetime import datetime
-import numpy as np
 from pathlib import Path
-import pyvisa
 import time
+
+import numpy as np
+import pyvisa
 
 
 IP = "127.0.0.1"
@@ -222,6 +223,11 @@ class VNA:
         verbose : bool
             If True, prints time taken to sweep.
 
+        Returns
+        -------
+        data : np.ndarray
+            Complex-valued array of S11 measurements.
+
         """
         t0 = time.time()
         self.s.write("TRIG:SEQ:SING")  # sweep
@@ -237,7 +243,7 @@ class VNA:
             print(f"{sweep_time:.2f} seconds to sweep.")
         data = np.array([float(i) for i in data])  # change to complex floats
         data = data[0::2] + 1j * data[1::2]
-        return data  # returns complex data
+        return data
 
     def measure_OSL(self):
         """
@@ -339,13 +345,16 @@ class VNA:
 
     def read_data(self, num_data=1):
         """
-        reads num_data s11s, adds them to self.data.
-        IN
-        num_data : number of measurements to take in a sitting.
+        Repeatedly call ``measure_S11, and store the results in the ``data''
+        attribute.
+
+        Parameters
+        ----------
+        num_data : int
+           Number of measurements to take.
+
         """
-        i = 0
-        while i < num_data:
-            i += 1
+        for _ in range(num_data):
             gamma = self.measure_S11()
             date = datetime.now().strftime("%Y%m%d_%H%M%S")
             self.data[f"{date}_gamma"] = gamma
