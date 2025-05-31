@@ -135,19 +135,19 @@ class VNA:
         return f_array
 
     @property
-    def metadata(self):
+    def header(self):
         """
         Get metadata of the VNA settings.
 
         Returns
         -------
-        metadata : dict
+        dict
             Dictionary with keys 'fstart', 'fstop', 'npoints', 'ifbw',
             'power_dBm', and 'freqs'. The values are the corresponding
             settings of the VNA.
 
         """
-        metadata = {
+        return {
             "fstart": self.fstart,
             "fstop": self.fstop,
             "npoints": self.npoints,
@@ -155,7 +155,6 @@ class VNA:
             "power_dBm": self.power_dBm,
             "freqs": self.freqs,
         }
-        return metadata
 
     def wait_for_opc(self):
         """
