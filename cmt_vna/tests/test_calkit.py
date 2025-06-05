@@ -1,7 +1,6 @@
 from cmt_vna import calkit as cal
 from cmt_vna import VNA
 import numpy as np
-import numpy as np
 
 def test_impedance_to_gamma():
     # perfect match gives 0 reflection
