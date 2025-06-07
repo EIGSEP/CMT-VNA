@@ -2,6 +2,7 @@ from cmt_vna import calkit as cal
 from cmt_vna import VNA
 import numpy as np
 
+
 def test_impedance_to_gamma():
     # perfect match gives 0 reflection
     Z = 50
@@ -90,6 +91,7 @@ def test_gamma():
         cal_std = cal.CalStandard(Z_ter, Z0, lxg, Z0=Z0)
         assert np.allclose(cal_std.gamma, cal_std.gamma_ter * exp)
 
+
 def test_calkit():
     # nominal values
     delta = 2e9  # loss
@@ -100,7 +102,7 @@ def test_calkit():
     assert np.allclose(calkit.Z0, Z0)
     assert np.allclose(calkit.omega, 2 * np.pi * f_Hz)
     # eq 20 in Monsalve et al 2016
-    Z_off = Z0 + (1-1j) * delta / (4 * np.pi * f_Hz) * np.sqrt(f_Hz/1e9)
+    Z_off = Z0 + (1 - 1j) * delta / (4 * np.pi * f_Hz) * np.sqrt(f_Hz / 1e9)
     gamma_off = cal.impedance_to_gamma(Z_off, Z0)
 
     # ideal case for open: C_open = 0 -> gamma_open = 1
@@ -123,16 +125,16 @@ def test_calkit():
     C_open = 1e-15 + 1e-27 * f_Hz + 1e-36 * f_Hz**2 + 1e-45 * f_Hz**3
     calkit.add_open(C_open, delta, delay)
     # eq 22 in Monsalve et al 2016
-    Z_open = -1j/(2*np.pi*f_Hz*C_open)
+    Z_open = -1j / (2 * np.pi * f_Hz * C_open)
     gamma_ter_open = cal.impedance_to_gamma(Z_open, Z0)
     assert np.allclose(calkit.open.gamma_ter, gamma_ter_open)
     assert np.allclose(calkit.open.gamma_off, gamma_off)
-    
+
     # frequency dependent L_short
     L_short = 1e-12 + 1e-24 * f_Hz + 1e-33 * f_Hz**2 + 1e-42 * f_Hz**3
     calkit.add_short(L_short, delta, delay)
     # eq 23 in Monsalve et al 2016
-    Z_short = 1j*2*np.pi*f_Hz*L_short
+    Z_short = 1j * 2 * np.pi * f_Hz * L_short
     gamma_ter_short = cal.impedance_to_gamma(Z_short, Z0)
     assert np.allclose(calkit.short.gamma_ter, gamma_ter_short)
     assert np.allclose(calkit.short.gamma_off, gamma_off)
@@ -143,6 +145,7 @@ def test_calkit():
     gamma_ter_match = cal.impedance_to_gamma(Z_match, Z0)
     assert np.allclose(calkit.match.gamma_ter, gamma_ter_match)
     assert np.allclose(calkit.match.gamma_off, gamma_off)
+
 
 def test_network_sparams():
     Nfreq = 125
@@ -162,56 +165,86 @@ def test_network_sparams():
     assert np.all(sparams[1] == 1)
     assert np.all(sparams[2] == 0)
 
+
 def test_S911T():
-    #recalculate standards, compare to the ones in S911T
+    # recalculate standards, compare to the ones in S911T
 
     Z0 = 50
     fake_freqs = np.linspace(50e6, 250e6, 1001)
-    calkit = cal.S911T(freq_Hz = fake_freqs)
+    calkit = cal.S911T(freq_Hz=fake_freqs)
 
-    #open standard
-    c_open = -7.425E-15 + 2470E-27 * fake_freqs - 226E-36 * fake_freqs**2 + 6.18E-45 * fake_freqs**3
-    c_delay = 30.821e-12 #s
-    c_loss = 2e9 #Ohm/s
-    
-    Z_off_open = Z0 + (1-1j) * c_loss / (4 * np.pi * fake_freqs) * np.sqrt(fake_freqs/1e9)
+    # open standard
+    c_open = (
+        -7.425e-15
+        + 2470e-27 * fake_freqs
+        - 226e-36 * fake_freqs**2
+        + 6.18e-45 * fake_freqs**3
+    )
+    c_delay = 30.821e-12  # s
+    c_loss = 2e9  # Ohm/s
+
+    Z_off_open = Z0 + (1 - 1j) * c_loss / (4 * np.pi * fake_freqs) * np.sqrt(
+        fake_freqs / 1e9
+    )
     gamma_off_open = cal.impedance_to_gamma(Z_off_open, Z0)
     Z_ter_open = -1j / (2 * np.pi * fake_freqs * c_open)
     gamma_ter_open = cal.impedance_to_gamma(Z_ter_open, Z0)
-    g_l_open = 1j * 2 * np.pi * fake_freqs * c_delay + (1+1j) * c_delay * c_loss / (2 * Z0) * np.sqrt(fake_freqs/1e9)
-    gamma_open = gamma_off_open * (1 - np.exp(-2 * g_l_open) - gamma_off_open * gamma_ter_open) + gamma_ter_open * np.exp(-2 * g_l_open)
-    gamma_open /= 1 - gamma_off_open * (np.exp(-2 * g_l_open) * gamma_off_open + gamma_ter_open * (1 - np.exp(-2 * g_l_open)))
+    g_l_open = 1j * 2 * np.pi * fake_freqs * c_delay + (
+        1 + 1j
+    ) * c_delay * c_loss / (2 * Z0) * np.sqrt(fake_freqs / 1e9)
+    gamma_open = gamma_off_open * (
+        1 - np.exp(-2 * g_l_open) - gamma_off_open * gamma_ter_open
+    ) + gamma_ter_open * np.exp(-2 * g_l_open)
+    gamma_open /= 1 - gamma_off_open * (
+        np.exp(-2 * g_l_open) * gamma_off_open
+        + gamma_ter_open * (1 - np.exp(-2 * g_l_open))
+    )
 
     assert np.allclose(calkit.open.gamma_ter, gamma_ter_open)
     assert np.allclose(calkit.open.gamma_off, gamma_off_open)
     assert np.allclose(calkit.open.gamma, gamma_open)
 
     # short standard
-    l_short = 27.98e-12 - 5010E-24 * fake_freqs + 303.8E-33 * fake_freqs**2 - 6.13E-42 * fake_freqs**3
-    l_delay = 30.688E-12 #s
-    l_loss = 2E9 #Ohm/s
+    l_short = (
+        27.98e-12
+        - 5010e-24 * fake_freqs
+        + 303.8e-33 * fake_freqs**2
+        - 6.13e-42 * fake_freqs**3
+    )
+    l_delay = 30.688e-12  # s
+    l_loss = 2e9  # Ohm/s
 
-    Z_off_short = Z0 + (1-1j) * l_loss / (4 * np.pi * fake_freqs) * np.sqrt(fake_freqs/1e9)
+    Z_off_short = Z0 + (1 - 1j) * l_loss / (4 * np.pi * fake_freqs) * np.sqrt(
+        fake_freqs / 1e9
+    )
     gamma_off_short = cal.impedance_to_gamma(Z_off_short, Z0)
     Z_ter_short = 1j * 2 * np.pi * fake_freqs * l_short
     gamma_ter_short = cal.impedance_to_gamma(Z_ter_short, Z0)
 
-    g_l_short = 1j * 2 * np.pi * fake_freqs * l_delay + (1+1j) * l_delay * l_loss / (2 * Z0) * np.sqrt(fake_freqs/1e9)
+    g_l_short = 1j * 2 * np.pi * fake_freqs * l_delay + (
+        1 + 1j
+    ) * l_delay * l_loss / (2 * Z0) * np.sqrt(fake_freqs / 1e9)
 
-    gamma_short = gamma_off_short * (1 - np.exp(-2 * g_l_short) - gamma_off_short * gamma_ter_short) + gamma_ter_short * np.exp(-2 * g_l_short)
-    gamma_short /= 1 - gamma_off_short * (np.exp(-2 * g_l_short) * gamma_off_short + gamma_ter_short * (1 - np.exp(-2 * g_l_short)))
-    
+    gamma_short = gamma_off_short * (
+        1 - np.exp(-2 * g_l_short) - gamma_off_short * gamma_ter_short
+    ) + gamma_ter_short * np.exp(-2 * g_l_short)
+    gamma_short /= 1 - gamma_off_short * (
+        np.exp(-2 * g_l_short) * gamma_off_short
+        + gamma_ter_short * (1 - np.exp(-2 * g_l_short))
+    )
+
     assert np.allclose(calkit.short.gamma_ter, gamma_ter_short)
     assert np.allclose(calkit.short.gamma_off, gamma_off_short)
     assert np.allclose(calkit.short.gamma, gamma_short)
 
+
 def test_sparams():
     fake_freqs = np.linspace(50e6, 250e6, 1001)
-    calkit = cal.S911T(freq_Hz = fake_freqs)
+    calkit = cal.S911T(freq_Hz=fake_freqs)
     gamma = calkit.std_gamma
-    
-    #gamma should be equal to the self gamma, so will get a perfect through Smatrix
+
+    # gamma should be equal to the self gamma, so will get a perfect through Smatrix
     sprms = calkit.sparams(gamma)
-    assert np.allclose(sprms[0], 0) #s11
-    assert np.allclose(sprms[1], 1) #s12s21
-    assert np.allclose(sprms[2], 0) #s22
+    assert np.allclose(sprms[0], 0)  # s11
+    assert np.allclose(sprms[1], 1)  # s12s21
+    assert np.allclose(sprms[2], 0)  # s22

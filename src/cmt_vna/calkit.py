@@ -110,36 +110,33 @@ def network_sparams(gamma_true, gamma_meas):
     """
     gamma_true = np.array(gamma_true, dtype=complex)
     gamma_meas = np.array(gamma_meas, dtype=complex)
-    
+
     _orig_shape = gamma_true.shape
-    
+
     # Reshape to (N, 3)
     gamma_true = gamma_true.T  # shape (N, 3)
     gamma_meas = gamma_meas.T  # shape (N, 3)
-    
+
     # Construct (N, 3, 3) matrix
     mat = np.stack(
-        [
-            np.ones_like(gamma_true),
-            gamma_true,                           
-            gamma_true * gamma_meas               
-        ],
-        axis=-1
+        [np.ones_like(gamma_true), gamma_true, gamma_true * gamma_meas],
+        axis=-1,
     )  # shape (N, 3, 3)
-    
+
     gamma_meas = gamma_meas[..., np.newaxis]  # or gamma_meas.reshape(N, 3, 1)
-    
+
     sparams = np.linalg.solve(mat, gamma_meas)  # shape (N, 3, 1)
-    
+
     sparams = np.squeeze(sparams, axis=-1)  # shape (N, 3)
-    
+
     # Reshape back to original
     sparams = sparams.T.reshape(_orig_shape)
-    
+
     # Compute S12 * S21
     sparams[1] += sparams[0] * sparams[2]
 
     return np.squeeze(sparams)
+
 
 def embed_sparams(sparams, gamma):
     """
@@ -189,19 +186,23 @@ def de_embed_sparams(sparams, gamma_prime):
     gamma = d / (s12s21 + s22 * d)
     return gamma
 
-def calibrate(gammas, sprms_dict):
-    '''calibrates all gammas in gammas dict with respect to all sparams in sprms dict. Applicable to both gammas and standards.
 
-        IN
-        kit: CalKit object.
-        gammas : array that contains all gamma values to be processed. 
-        sprms_dict : sparams dict to de-embed from the gammas.
-        OUT
-        returns the calibrated gammas as an array. 
-    '''
+def calibrate(gammas, sprms_dict):
+    """calibrates all gammas in gammas dict with respect to all sparams in sprms dict. Applicable to both gammas and standards.
+
+    IN
+    kit: CalKit object.
+    gammas : array that contains all gamma values to be processed.
+    sprms_dict : sparams dict to de-embed from the gammas.
+    OUT
+    returns the calibrated gammas as an array.
+    """
     for key, sprm in sprms_dict.items():
-        gammas = np.array([de_embed_sparams(sparams=sprm, gamma_prime=g) for g in gammas])
+        gammas = np.array(
+            [de_embed_sparams(sparams=sprm, gamma_prime=g) for g in gammas]
+        )
     return gammas
+
 
 class CalStandard:
 
@@ -379,23 +380,26 @@ class CalKit:
         """
         self.match = self._add_standard(Z_match, delta_1ghz, delay)
 
-class BasicLoadStandard:
-    '''I don't have a good model for my load standard, so I made something temporary but compatible. 
-        
-        Parameters
-        impedance : the impedance of your load. generally is 50Ohm. 
-        Z0 : the characteristic impedance of your system. default is 50Ohm.
 
-        Properties
-        gamma : calls impedance_to_gamma on the impedance of the load and Z0. 
-    '''
+class BasicLoadStandard:
+    """I don't have a good model for my load standard, so I made something temporary but compatible.
+
+    Parameters
+    impedance : the impedance of your load. generally is 50Ohm.
+    Z0 : the characteristic impedance of your system. default is 50Ohm.
+
+    Properties
+    gamma : calls impedance_to_gamma on the impedance of the load and Z0.
+    """
+
     def __init__(self, impedance, Z0=50):
         self.impedance = impedance
         self.Z0 = Z0
-    
+
     @property
     def gamma(self):
-        return impedance_to_gamma(self.impedance, self.Z0) 
+        return impedance_to_gamma(self.impedance, self.Z0)
+
 
 class S911T(CalKit):
     def __init__(self, freq_Hz, match_resistance=50):
@@ -409,20 +413,20 @@ class S911T(CalKit):
 
         Z0 = 50
 
-        #open standard 
-        c_coefs = ( 6.18E-45,-226E-36, 2470E-27,-7.425E-15)
+        # open standard
+        c_coefs = (6.18e-45, -226e-36, 2470e-27, -7.425e-15)
         c_open = np.polyval(c_coefs, freq_Hz)
-        open_delay = 30.821E-12 #s
-        open_loss = 2E9 #Ohm/s
+        open_delay = 30.821e-12  # s
+        open_loss = 2e9  # Ohm/s
 
-        #short standard
-        l_coefs = (-6.13E-42,303.8E-33, -5010E-24, 27.98E-12)
+        # short standard
+        l_coefs = (-6.13e-42, 303.8e-33, -5010e-24, 27.98e-12)
         l_short = np.polyval(l_coefs, freq_Hz)
-        short_delay = 30.688E-12 #s
-        short_loss = 2E9 #Ohm/s
+        short_delay = 30.688e-12  # s
+        short_loss = 2e9  # Ohm/s
 
-        #load standard
-        load_Z = 50 #Ohm
+        # load standard
+        load_Z = 50  # Ohm
         load = np.ones(len(freq_Hz)) * load_Z
 
         super().__init__(freq_Hz, Z0=Z0)
@@ -439,7 +443,7 @@ class S911T(CalKit):
         return gamma
 
     def sparams(self, stds_meas, model=None):
-        '''
+        """
         Returns a scattering matrix based on measured and model standards.
         IN
         stds_meas : np.array (3, N)
@@ -449,8 +453,8 @@ class S911T(CalKit):
         OUT
         np.array (3,N)
             (S11, S12*S21, S22) s matrix.
-        '''
+        """
         if not model:
-            model = self.std_gamma #get model standards if none are provided
+            model = self.std_gamma  # get model standards if none are provided
         sparams = network_sparams(model, stds_meas)
         return sparams

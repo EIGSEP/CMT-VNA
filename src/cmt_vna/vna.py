@@ -214,7 +214,7 @@ class VNA:
 
     def measure_S11(self, verbose=False):
         """
-        Get S11 measurement (complex). 
+        Get S11 measurement (complex).
 
         Parameters
         ----------
