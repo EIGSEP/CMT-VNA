@@ -50,4 +50,9 @@ addopts = [
 
 [tool.black]
 line-length = 79
-exclude = "scripts/test_lab_scripts"
+extend-exclude = """
+(
+  ^/scripts/test_lab_scripts/
+  | .*\\.ipynb$
+)
+"""
