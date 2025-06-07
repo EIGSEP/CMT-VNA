@@ -1,4 +1,4 @@
-from cmt_vna import VNA
+from . import VNA
 
 class DummyVNA(VNA):
     pass
