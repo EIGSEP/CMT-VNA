@@ -42,20 +42,33 @@ class VNA:
 
         """
 
-        self.rm = pyvisa.ResourceManager("@py")
-        self.s = self.rm.open_resource(f"TCPIP::{ip}::{port}::SOCKET")
-        self.s.read_termination = "\n"
-        self.s.timeout = timeout * 1e3  # convert to milliseconds
-        self._clear_data()
-        self.save_dir = Path(save_dir)
-        self.switch_nw = switch_network
-
         # attributes
         self._fstart = None
         self._fstop = None
         self._npoints = None
         self._ifbw = None
         self._power_dBm = None
+
+        self._clear_data()
+        self.save_dir = Path(save_dir)
+        self.switch_nw = switch_network
+
+        # configure and connect to VNA
+        self.vna_ip = ip
+        self.vna_port = port
+        self.vna_timeout = timeout * 1e3  # convert to milliseconds
+        self.s = None
+        self._configure_vna()
+
+    def _configure_vna(self):
+        """
+        Use pyvisa to connect to the VNA and configure it.
+        """
+        self.rm = pyvisa.ResourceManager("@py")
+        cmd = f"TCPIP::{self.vna_ip}::{self.vna_port}::SOCKET"
+        self.s = self.rm.open_resource(cmd)
+        self.s.read_termination = "\n"
+        self.s.timeout = self.vna_timeout
 
         # settings
         self.s.write("CALC:FORM SCOM\n")  # get s11 as real and imag
