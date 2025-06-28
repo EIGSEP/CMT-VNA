@@ -4,7 +4,7 @@ import time
 from . import VNA
 
 
-class DummyReource:
+class DummyResource:
     """
     Dummy PyVisa.Resource class for testing purposes.
     This class does not implement any real functionality.
@@ -25,7 +25,7 @@ class DummyReource:
         """
         return "CALC:TRAC:DATA:FDAT?"
 
-    def query_ascii_value(self, command, container=None, npoints=1000):
+    def query_ascii_values(self, command, container=None, npoints=1000):
         """
         Simulate querying a value from the VNA. The mock only
         implements the case where the request is for data. Thus
@@ -74,7 +74,7 @@ class DummyVNA(VNA):
         replacing the attribute `s' that communicates with the VNA with
         a dummy resource that does nothng.
         """
-        self.s = DummyReource()
+        self.s = DummyResource()
 
     @property
     def id(self):
