@@ -256,9 +256,15 @@ class VNA:
         data = data[0::2] + 1j * data[1::2]
         return data
 
-    def measure_OSL(self):
+    def measure_OSL(self, verify_switch=True):
         """
         Iterate through all standards for measurement.
+
+        Parameters
+        ----------
+        verify_switch : bool
+            Verify that the switching happened. Only relevant if
+            `switch_nw` is not None.
 
         Returns
         -------
@@ -266,16 +272,31 @@ class VNA:
             Dictionary of standards measurements. Keys are ``open'',
             ``short'', and ``load''.
 
+        Raises
+        -------
+        RuntimeError
+            If `verify_switch` is True and the switched position does
+            not match the expected standard.
+
         """
 
-        OSL = dict()
+        OSL = {}
         standards = ["VNAO", "VNAS", "VNAL"]  # set osl standard list
         for standard in standards:
             if self.switch_nw is None:  # testing/manual osl measurements
                 print(f"connect {standard} and press enter")
                 input()
-            else:  # automatic osl measurements
-                self.switch_nw.switch(standard)
+            # automatic osl measurements
+            elif verify_switch:
+                try:
+                    self.switch_nw.switch(standard, verify=True)
+                except RuntimeError as e:
+                    raise RuntimeError(
+                        f"Failed to switch to {standard}. "
+                        "Check the switch network."
+                    ) from e
+            else:
+                self.switch_nw.switch(standard, verify=False)
             data = self.measure_S11()
             OSL[standard] = data
         return OSL
