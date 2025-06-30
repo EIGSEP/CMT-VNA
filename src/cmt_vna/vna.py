@@ -343,10 +343,11 @@ class VNA:
         if self.switch_nw is None:
             raise RuntimeError("No switch network set, cannot measure S11.")
         s11 = {}
-        self.switch_nw.switch("VNAANT")  # switch to antenna
+        self.switch_nw.switch("VNAANT", verify=True)  # switch to antenna
         s11["ant"] = self.measure_S11()
         if measure_noise:
-            self.switch_nw.switch("VNAN")  # switch to noise source
+            # switch to noise source (off)
+            self.switch_nw.switch("VNANOFF", verify=True)
             s11["noise"] = self.measure_S11()
         return s11
 
@@ -371,7 +372,7 @@ class VNA:
         if self.switch_nw is None:
             raise RuntimeError("No switch network set, cannot measure S11.")
         s11 = {}
-        self.switch_nw.switch("VNARF")  # switch to receiver
+        self.switch_nw.switch("VNARF", verify=True)  # switch to receiver
         s11["rec"] = self.measure_S11()
         return s11
 
