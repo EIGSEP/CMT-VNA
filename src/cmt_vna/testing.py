@@ -95,7 +95,7 @@ class DummyVNA(VNA):
         """
         try:
             f = np.linspace(self.fstart, self.fstop, self.npoints)
-        except:
+        except AttributeError:
             f = None
         return f
 
