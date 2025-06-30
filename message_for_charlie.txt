@@ -1,0 +1,5 @@
+I stashed your files with git stash.
+
+You can do git stash apply to get them back.
+
+Let me know if you have any questions.
