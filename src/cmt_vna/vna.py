@@ -57,25 +57,31 @@ class VNA:
         self.vna_ip = ip
         self.vna_port = port
         self.vna_timeout = timeout * 1e3  # convert to milliseconds
-        self.s = None
-        self._configure_vna()
+        self.s = self._configure_vna()
 
     def _configure_vna(self):
         """
         Use pyvisa to connect to the VNA and configure it.
+
+        Returns
+        -------
+        s : pyvisa.Resource
+            Opened resource to the VNA.
+
         """
-        self.rm = pyvisa.ResourceManager("@py")
+        rm = pyvisa.ResourceManager("@py")
         cmd = f"TCPIP::{self.vna_ip}::{self.vna_port}::SOCKET"
-        self.s = self.rm.open_resource(cmd)
-        self.s.read_termination = "\n"
-        self.s.timeout = self.vna_timeout
+        s = rm.open_resource(cmd)
+        s.read_termination = "\n"
+        s.timeout = self.vna_timeout
 
         # settings
-        self.s.write("CALC:FORM SCOM\n")  # get s11 as real and imag
-        self.s.write("SENS1:AVER:COUN 1\n")  # number of averages
+        s.write("CALC:FORM SCOM\n")  # get s11 as real and imag
+        s.write("SENS1:AVER:COUN 1\n")  # number of averages
         # linear sweep instead of point by point
-        self.s.write("SWE:TYPE LIN\n")
-        self.s.write("TRIG:SOUR BUS\n")
+        s.write("SWE:TYPE LIN\n")
+        s.write("TRIG:SOUR BUS\n")
+        return s
 
     @property
     def id(self):

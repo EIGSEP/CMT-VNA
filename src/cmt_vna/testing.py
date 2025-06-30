@@ -74,7 +74,7 @@ class DummyVNA(VNA):
         replacing the attribute `s' that communicates with the VNA with
         a dummy resource that does nothng.
         """
-        self.s = DummyResource()
+        return DummyResource()
 
     @property
     def id(self):
