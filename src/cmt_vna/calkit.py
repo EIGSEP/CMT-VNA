@@ -188,7 +188,9 @@ def de_embed_sparams(sparams, gamma_prime):
 
 
 def calibrate(gammas, sprms_dict):
-    """calibrates all gammas in gammas dict with respect to all sparams in sprms dict. Applicable to both gammas and standards.
+    """
+    Calibrate all gammas in gammas dict with respect to all sparams in
+    sprms dict. Applicable to both gammas and standards.
 
     IN
     kit: CalKit object.
@@ -382,7 +384,9 @@ class CalKit:
 
 
 class BasicLoadStandard:
-    """I don't have a good model for my load standard, so I made something temporary but compatible.
+    """
+    Temporary class to hold a load standard for calibration. Will be
+    updated with improved models in the future.
 
     Parameters
     impedance : the impedance of your load. generally is 50Ohm.
@@ -444,12 +448,14 @@ class S911T(CalKit):
 
     def sparams(self, stds_meas, model=None):
         """
-        Returns a scattering matrix based on measured and model standards.
+        Return a scattering matrix based on measured and model standards.
         IN
         stds_meas : np.array (3, N)
-            The standards reflection coefficients measured at the desired reference plane.
+            The standards reflection coefficients measured at the
+            desired reference plane.
         model : np.array (3,N) or None
-            If none, the model reflection coefficient given by Copper Mountain is used.
+            If none, the model reflection coefficient given by Copper
+            Mountain is used.
         OUT
         np.array (3,N)
             (S11, S12*S21, S22) s matrix.

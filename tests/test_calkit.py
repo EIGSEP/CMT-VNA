@@ -1,5 +1,4 @@
 from cmt_vna import calkit as cal
-from cmt_vna import VNA
 import numpy as np
 
 
@@ -243,7 +242,7 @@ def test_sparams():
     calkit = cal.S911T(freq_Hz=fake_freqs)
     gamma = calkit.std_gamma
 
-    # gamma should be equal to the self gamma, so will get a perfect through Smatrix
+    # gamma equal to self.gamma, yielding a perfect through Smatrix
     sprms = calkit.sparams(gamma)
     assert np.allclose(sprms[0], 0)  # s11
     assert np.allclose(sprms[1], 1)  # s12s21
