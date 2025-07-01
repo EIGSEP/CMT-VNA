@@ -22,7 +22,7 @@ dependencies = [
   "pyserial",
   "pyVISA",
   "pyvisa-py",
-  "switch_network @ git+https://github.com/EIGSEP/switchNW.git@dev",
+  "switch_network @ git+https://github.com/EIGSEP/switchNW.git",
 ]
 
 [project.optional-dependencies]
