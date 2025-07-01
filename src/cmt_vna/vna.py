@@ -42,14 +42,6 @@ class VNA:
 
         """
 
-        self.rm = pyvisa.ResourceManager("@py")
-        self.s = self.rm.open_resource(f"TCPIP::{ip}::{port}::SOCKET")
-        self.s.read_termination = "\n"
-        self.s.timeout = timeout * 1e3  # convert to milliseconds
-        self._clear_data()
-        self.save_dir = Path(save_dir)
-        self.switch_nw = switch_network
-
         # attributes
         self._fstart = None
         self._fstop = None
@@ -57,12 +49,39 @@ class VNA:
         self._ifbw = None
         self._power_dBm = None
 
+        self._clear_data()
+        self.save_dir = Path(save_dir)
+        self.switch_nw = switch_network
+
+        # configure and connect to VNA
+        self.vna_ip = ip
+        self.vna_port = port
+        self.vna_timeout = timeout * 1e3  # convert to milliseconds
+        self.s = self._configure_vna()
+
+    def _configure_vna(self):
+        """
+        Use pyvisa to connect to the VNA and configure it.
+
+        Returns
+        -------
+        s : pyvisa.Resource
+            Opened resource to the VNA.
+
+        """
+        rm = pyvisa.ResourceManager("@py")
+        cmd = f"TCPIP::{self.vna_ip}::{self.vna_port}::SOCKET"
+        s = rm.open_resource(cmd)
+        s.read_termination = "\n"
+        s.timeout = self.vna_timeout
+
         # settings
-        self.s.write("CALC:FORM SCOM\n")  # get s11 as real and imag
-        self.s.write("SENS1:AVER:COUN 1\n")  # number of averages
+        s.write("CALC:FORM SCOM\n")  # get s11 as real and imag
+        s.write("SENS1:AVER:COUN 1\n")  # number of averages
         # linear sweep instead of point by point
-        self.s.write("SWE:TYPE LIN\n")
-        self.s.write("TRIG:SOUR BUS\n")
+        s.write("SWE:TYPE LIN\n")
+        s.write("TRIG:SOUR BUS\n")
+        return s
 
     @property
     def id(self):
@@ -214,7 +233,7 @@ class VNA:
 
     def measure_S11(self, verbose=False):
         """
-        Get S11 measurement (complex). 
+        Get S11 measurement (complex).
 
         Parameters
         ----------
@@ -243,9 +262,15 @@ class VNA:
         data = data[0::2] + 1j * data[1::2]
         return data
 
-    def measure_OSL(self):
+    def measure_OSL(self, verify_switch=True):
         """
         Iterate through all standards for measurement.
+
+        Parameters
+        ----------
+        verify_switch : bool
+            Verify that the switching happened. Only relevant if
+            `switch_nw` is not None.
 
         Returns
         -------
@@ -253,16 +278,31 @@ class VNA:
             Dictionary of standards measurements. Keys are ``open'',
             ``short'', and ``load''.
 
+        Raises
+        -------
+        RuntimeError
+            If `verify_switch` is True and the switched position does
+            not match the expected standard.
+
         """
 
-        OSL = dict()
+        OSL = {}
         standards = ["VNAO", "VNAS", "VNAL"]  # set osl standard list
         for standard in standards:
             if self.switch_nw is None:  # testing/manual osl measurements
                 print(f"connect {standard} and press enter")
                 input()
-            else:  # automatic osl measurements
-                self.switch_nw.switch(standard)
+            # automatic osl measurements
+            elif verify_switch:
+                try:
+                    self.switch_nw.switch(standard, verify=True)
+                except RuntimeError as e:
+                    raise RuntimeError(
+                        f"Failed to switch to {standard}. "
+                        "Check the switch network."
+                    ) from e
+            else:
+                self.switch_nw.switch(standard, verify=False)
             data = self.measure_S11()
             OSL[standard] = data
         return OSL
@@ -309,10 +349,11 @@ class VNA:
         if self.switch_nw is None:
             raise RuntimeError("No switch network set, cannot measure S11.")
         s11 = {}
-        self.switch_nw.switch("VNAANT")  # switch to antenna
+        self.switch_nw.switch("VNAANT", verify=True)  # switch to antenna
         s11["ant"] = self.measure_S11()
         if measure_noise:
-            self.switch_nw.switch("VNAN")  # switch to noise source
+            # switch to noise source (off)
+            self.switch_nw.switch("VNANOFF", verify=True)
             s11["noise"] = self.measure_S11()
         return s11
 
@@ -337,7 +378,7 @@ class VNA:
         if self.switch_nw is None:
             raise RuntimeError("No switch network set, cannot measure S11.")
         s11 = {}
-        self.switch_nw.switch("VNARF")  # switch to receiver
+        self.switch_nw.switch("VNARF", verify=True)  # switch to receiver
         s11["rec"] = self.measure_S11()
         return s11
 
