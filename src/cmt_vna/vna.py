@@ -36,7 +36,7 @@ class VNA:
         save_dir : Path or str
             Directory to save data to. Must be able to instantiate a Path
             object.
-        switch_network : switch_network.SwitchNetwork or None
+        switch_network : picohost.PicoRFSwitch or None
             Instance of SwitchNetwork to automatically switch the DUT or
             standards. If None, assumes switching is done in another way.
 
@@ -262,15 +262,9 @@ class VNA:
         data = data[0::2] + 1j * data[1::2]
         return data
 
-    def measure_OSL(self, verify_switch=True):
+    def measure_OSL(self):
         """
         Iterate through all standards for measurement.
-
-        Parameters
-        ----------
-        verify_switch : bool
-            Verify that the switching happened. Only relevant if
-            `switch_nw` is not None.
 
         Returns
         -------
@@ -293,16 +287,13 @@ class VNA:
                 print(f"connect {standard} and press enter")
                 input()
             # automatic osl measurements
-            elif verify_switch:
-                try:
-                    self.switch_nw.switch(standard, verify=True)
-                except RuntimeError as e:
+            else:
+                sw = self.switch_nw.switch(standard)
+                if sw == 0:
                     raise RuntimeError(
                         f"Failed to switch to {standard}. "
                         "Check the switch network."
-                    ) from e
-            else:
-                self.switch_nw.switch(standard, verify=False)
+                    )
             data = self.measure_S11()
             OSL[standard] = data
         return OSL
@@ -349,11 +340,11 @@ class VNA:
         if self.switch_nw is None:
             raise RuntimeError("No switch network set, cannot measure S11.")
         s11 = {}
-        self.switch_nw.switch("VNAANT", verify=True)  # switch to antenna
+        self.switch_nw.switch("VNAANT")  # switch to antenna
         s11["ant"] = self.measure_S11()
         if measure_noise:
             # switch to noise source (off)
-            self.switch_nw.switch("VNANOFF", verify=True)
+            self.switch_nw.switch("VNANOFF")
             s11["noise"] = self.measure_S11()
         return s11
 
@@ -378,7 +369,7 @@ class VNA:
         if self.switch_nw is None:
             raise RuntimeError("No switch network set, cannot measure S11.")
         s11 = {}
-        self.switch_nw.switch("VNARF", verify=True)  # switch to receiver
+        self.switch_nw.switch("VNARF")  # switch to receiver
         s11["rec"] = self.measure_S11()
         return s11
 
