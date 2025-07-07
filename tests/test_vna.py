@@ -4,8 +4,7 @@ import pytest
 import tempfile
 import time
 
-import switch_network
-
+from picohost.testing import DummyPicoRFSwitch
 from cmt_vna.vna import IP, PORT
 from cmt_vna.testing import DummyVNA
 
@@ -15,7 +14,8 @@ class TestDummyVNA:
 
     def setup_method(self):
         """Set up test fixtures before each test method."""
-        self.switch_nw = switch_network.testing.DummySwitchNetwork()
+        self.switch_nw = DummyPicoRFSwitch(port="/dev/ttyUSB0")
+        self.switch_nw.connect()
         self.vna = DummyVNA(switch_network=self.switch_nw)
 
     def test_initialization(self):
@@ -182,7 +182,7 @@ class TestDummyVNA:
         self.vna.setup(1e6, 250e6, 1000, 100, -5)
         spy = mocker.spy(self.vna.switch_nw, "switch")
 
-        osl = self.vna.measure_OSL(verify_switch=True)
+        osl = self.vna.measure_OSL()
         assert isinstance(osl, dict)
         assert set(osl.keys()) == {"VNAO", "VNAS", "VNAL"}
         for key, data in osl.items():
@@ -195,18 +195,12 @@ class TestDummyVNA:
         assert spy.call_count == 3
         spy.assert_has_calls(
             [
-                mocker.call("VNAO", verify=True),
-                mocker.call("VNAS", verify=True),
-                mocker.call("VNAL", verify=True),
+                mocker.call("VNAO"),
+                mocker.call("VNAS"),
+                mocker.call("VNAL"),
             ]
         )
 
-        # make dummy switch network fail
-        self.vna.switch_nw.fail_switch = True
-        with pytest.raises(RuntimeError):
-            osl = self.vna.measure_OSL(verify_switch=True)
-        # no err if not verifying switch
-        osl = self.vna.measure_OSL(verify_switch=False)
 
     def test_add_osl(self, monkeypatch):
         """Test add_OSL method."""
@@ -238,8 +232,8 @@ class TestDummyVNA:
         assert spy.call_count == 2
         spy.assert_has_calls(
             [
-                mocker.call("VNAANT", verify=True),
-                mocker.call("VNANOFF", verify=True),
+                mocker.call("VNAANT"),
+                mocker.call("VNANOFF"),
             ]
         )
 
@@ -254,7 +248,7 @@ class TestDummyVNA:
         assert spy.call_count == 1
         spy.assert_has_calls(
             [
-                mocker.call("VNAANT", verify=True),
+                mocker.call("VNAANT"),
             ]
         )
 
@@ -272,7 +266,7 @@ class TestDummyVNA:
         self.vna.setup(1e6, 250e6, 1000, 100, -5)
         spy = mocker.spy(self.vna.switch_nw, "switch")
         s11 = self.vna.measure_rec()
-        spy.assert_called_once_with("VNARF", verify=True)
+        spy.assert_called_once_with("VNARF")
         assert "rec" in s11
         assert isinstance(s11["rec"], np.ndarray)
 
