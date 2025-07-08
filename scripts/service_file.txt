@@ -1,0 +1,20 @@
+Put cmt-rvna.service into /etc/systemd/system
+
+Make sure xvfb is installed
+
+Run:
+sudo systemctl daemon-reload
+sudo systemctl restart cmt-rvna.service
+
+Run:
+systemctl status cmt-rvna.service
+
+Should return:
+    Loaded: loaded (/etc/systemd/system/cmt-rvna.service; enabled; vendor preset: enabled)
+     Active: active (running) since Mon 2025-07-07 21:58:01 PDT; 10h ago
+   Main PID: 689 (xvfb-run)
+      Tasks: 38 (limit: 9082)
+     Memory: 315.8M
+        CPU: 3h 45min 44.030s
+
+Or something similar
