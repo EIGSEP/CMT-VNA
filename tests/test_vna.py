@@ -201,7 +201,6 @@ class TestDummyVNA:
             ]
         )
 
-
     def test_add_osl(self, monkeypatch):
         """Test add_OSL method."""
         self.vna.setup(1e6, 250e6, 1000, 100, -5)
@@ -229,22 +228,27 @@ class TestDummyVNA:
         # Test with noise measurement
         s11 = self.vna.measure_ant(measure_noise=True)
 
-        assert spy.call_count == 2
+        assert spy.call_count == 3
         spy.assert_has_calls(
             [
                 mocker.call("VNAANT"),
                 mocker.call("VNANOFF"),
+                mocker.call("VNANON"),
             ]
         )
 
         assert "ant" in s11
+        assert "load" in s11
         assert "noise" in s11
         assert isinstance(s11["ant"], np.ndarray)
+        assert isinstance(s11["load"], np.ndarray)
         assert isinstance(s11["noise"], np.ndarray)
 
         # Test without noise measurement
         spy.reset_mock()
-        s11_no_noise = self.vna.measure_ant(measure_noise=False)
+        s11_no_noise = self.vna.measure_ant(
+            measure_load=False, measure_noise=False
+        )
         assert spy.call_count == 1
         spy.assert_has_calls(
             [

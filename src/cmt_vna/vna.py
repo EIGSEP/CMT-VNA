@@ -313,7 +313,7 @@ class VNA:
         self.data[std_key] = np.array(list(OSL.values()))
         self.stds_meta[std_key] = list(OSL.keys())
 
-    def measure_ant(self, measure_noise=True):
+    def measure_ant(self, measure_noise=True, measure_load=True):
         """
         Measure S11 of antenna. If measure_noise is True, also measures
         S11 of noise source. This is a convenience function that uses the
@@ -323,8 +323,9 @@ class VNA:
         Parameters
         ----------
         measure_noise : bool
-            If True, measures S11 of noise source. If False, only measures
-            S11 of antenna.
+            If True, measures S11 of noise source.
+        measure_load : bool
+            If True, measures S11 of load.
 
         Returns
         -------
@@ -342,9 +343,13 @@ class VNA:
         s11 = {}
         self.switch_nw.switch("VNAANT")  # switch to antenna
         s11["ant"] = self.measure_S11()
-        if measure_noise:
-            # switch to noise source (off)
+        if measure_load:
+            # switch to load (noise source off)
             self.switch_nw.switch("VNANOFF")
+            s11["load"] = self.measure_S11()
+        if measure_noise:
+            # switch to noise source
+            self.switch_nw.switch("VNANON")
             s11["noise"] = self.measure_S11()
         return s11
 
