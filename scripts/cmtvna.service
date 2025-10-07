@@ -1,0 +1,17 @@
+[Unit]
+Description=Start cmtvna binary file in socket mode
+After=network.target
+
+[Service]
+Type=simple
+User=eigsep
+WorkingDirectory=/home/eigsep/CMT-VNA/instrument_software/bin
+ExecStart=xvfb-run -a /home/eigsep/CMT-VNA/instrument_software/bin/cmtvna --socket-server on --socket-port 5025
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,3 +1,4 @@
+#Semi-deprecated I think
 Put cmt-rvna.service into /etc/systemd/system
 
 Make sure xvfb is installed
