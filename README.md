@@ -1,7 +1,13 @@
 # Copper Mountain Techonologies VNA
 We now have Raspberry Pi-compatible software (beta version) for the R60 VNA. For the instructions for x86-compatible software, see the README\_DEP.md.
 **Requirements**
-The Pi must be running Ubuntu Desktop 64-bit 24.4 (Noble). We are waiting on the beta headless version, which would allow us to use the Ubuntu Server. The library *libxcb-cursor0* must be installed separately. You should also install python3.12-venv, openssh-server, git, and any other libraries you want.
+The Pi must be running Ubuntu Desktop 64-bit 24.4 (Noble). We are waiting on the beta headless version, which would allow us to use the Ubuntu Server. The library *libxcb-cursor0* must be installed separately. You should also install python3.12-venv, openssh-server, git, and any other libraries you want. 
+
+To check that no other libraries are needed, you can run:
+```
+ldd ./instrument_software/bin/cmtvna | grep "Not Found"
+``` 
+This will display all dependencies that are missing. 
 
 **Installation**
 1. Clone the CMT-VNA repo.
