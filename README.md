@@ -1,33 +1,45 @@
 # Copper Mountain Techonologies VNA
+We now have Raspberry Pi-compatible software (beta version) for the R60 VNA. For the instructions for x86-compatible software, see the README\_DEP.md.
+**Requirements**
+The Pi must be running Ubuntu Desktop 64-bit 24.4 (Noble). We are waiting on the beta headless version, which would allow us to use the Ubuntu Server. The library *libxcb-cursor0* must be installed separately. You should also install python3.12-venv, openssh-server, git, and any other libraries you want. 
 
-[![codecov](https://codecov.io/gh/EIGSEP/CMT-VNA/graph/badge.svg?token=RPQPOL2L4Z)](https://codecov.io/gh/EIGSEP/CMT-VNA)
+You must have the instrument software downloaded from the Google Drive.
+
+To check that no other libraries are needed, you can run:
+```
+ldd ./instrument_software/bin/cmtvna | grep "Not Found"
+``` 
+This will display all dependencies that are missing. 
 
 **Installation**
+1. Clone the CMT-VNA repo.
+2. Create a virtual environment, and install the CMT-VNA repository in that environment.
+3. Run the bash script that sets the USB rules (it lives in this repo):
+```
+chmod +x ./scripts/install_vna_rules.sh
+sudo ./scripts/install_vna_rules.sh
+``` 
+4. Make the binary file executable and run it to open the GUI:
+```
+chmod +x path/to/cmtvna 
+path/to/cmtvna --socket-server on --socket-port 5025
+```
+5. Locate the green dot at the bottom left of the GUI. If it says something like "(R60) \<serial number\>" then move on to step 6. If it says "SN0916" then go to settings in the bottom left corner, and there should be a VNA in the "detected" list of devices. Click Connect, and this preference should now be saved. 
 
-Install the software from https://coppermountaintech.com/download-free-vna-software/, using the R VNA software compatible with 1-port VNAs. On Linux: unzip the files, make the AppImage exectuable, and run it. See the provided documentation or the [FAQ](https://coppermountaintech.com/frequently-asked-questions/) in case of issues with the installation.
+6. The service file needed to run the GUI in the background is included in this repo at ./scripts/cmtvna.service. Copy the service file to /etc/systemd/system, and make sure that the path in the WorkingDirectory and ExecStart lines of the service file lead to the correct binary file within the repo (it's hardcoded). Then you can run:
+```
+sudo systemctl daemon-reload
+sudo systemctl enable cmtvna.service
+sudo systemctl start cmtvna.service
+```
 
-> [!NOTE]
-> For newer version of Ubuntu (20+), there's a known issue where the package is incompatible with the fonts of the OS. The fix (from the FAQ) is:
-> 
-> Download the v12 font package (fontconfig-config_2.12.6-0ubuntu2_all.deb) from http://security.ubuntu.com/ubuntu/pool/main//f/fontconfig/
-> Then install it by running:
-> ```
-> sudo dpkg –install ~/Downloads/fontconfig-config_2.12.6-0ubuntu2_all.deb
-> cp -L -r /etc/fonts/conf.d /tmp/etc-fonts-conf.d
-> sudo apt install –fix-broken
-> sudo cp -L -r /tmp/etc-fonts-conf.d/* /etc/fonts/conf.d/
-> ```
-> Go to /etc/fonts/fonts.conf and delete the lines at the top of the file that start with tags "\<its:\>" or "\<description\>".
-> 
-> Add this line to your .bashrc:
-> ```
-> export TERM=xterm
-> ```
+7. (Optional) To check the status of the service, you can run:
+```systemctl status cmtvna.service```
 
-**Getting started**
 
-After installation, the software can be opened by running the exectuable, e.g., `./CMT_RVNA_22.4.3_x86_64.AppImage`. Then enable the TCP protocol in System > Mis Settings > Network setup > Interface state: ON. Take note of the port; it's typically 5025. To do this from the command line---and optionally not opening the GUI---use `./CMT_RVNA_22.4.3_x86_64.AppImage EnableSocket:5025 InvisibleMode`.
-
+**Some Notes**
+If you are seeing all zeros when using the cmt\_vna package, it's possible that the software is connecting to the default SN0916 rather than detecting the R60 device. This could be an issue with your udev rules, or that you skipped step 5, or that step 5 went wrong in some other way.
+ 
 **Resources**
 
 Monsalve et al., 2016 on calibration: https://ui.adsabs.harvard.edu/abs/2016ITMTT..64.2631M/abstract
