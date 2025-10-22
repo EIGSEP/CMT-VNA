@@ -3,6 +3,8 @@ We now have Raspberry Pi-compatible software (beta version) for the R60 VNA. For
 **Requirements**
 The Pi must be running Ubuntu Desktop 64-bit 24.4 (Noble). We are waiting on the beta headless version, which would allow us to use the Ubuntu Server. The library *libxcb-cursor0* must be installed separately. You should also install python3.12-venv, openssh-server, git, and any other libraries you want. 
 
+You must have the instrument software downloaded from the Google Drive.
+
 To check that no other libraries are needed, you can run:
 ```
 ldd ./instrument_software/bin/cmtvna | grep "Not Found"
@@ -19,8 +21,8 @@ sudo ./scripts/install_vna_rules.sh
 ``` 
 4. Make the binary file executable and run it to open the GUI:
 ```
-chmod +x ./instrument_software/bin/cmtvna 
-instrument_software/bin/cmtvna --socket-server on --socket-port 5025
+chmod +x path/to/cmtvna 
+path/to/cmtvna --socket-server on --socket-port 5025
 ```
 5. Locate the green dot at the bottom left of the GUI. If it says something like "(R60) \<serial number\>" then move on to step 6. If it says "SN0916" then go to settings in the bottom left corner, and there should be a VNA in the "detected" list of devices. Click Connect, and this preference should now be saved. 
 
