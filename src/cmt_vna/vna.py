@@ -9,6 +9,29 @@ import pyvisa
 IP = "127.0.0.1"
 PORT = 5025
 
+# Default (low, high) dB bands for ``VNA.activeflag``. ``None`` disables
+# that side of the check. Open/short standards should sit near 0 dB; loads
+# and antenna/receiver measurements should be well below 0 dB.
+DEFAULT_FLAG_THRESHOLDS = {
+    "VNAO": (-5, 0),
+    "VNAS": (-5, 0),
+    "VNAL": (None, -30),
+    "rec": (None, -5),
+    "ant": (None, -5),
+    "load": (None, -30),
+    "noise": (None, -30),
+}
+
+
+def lin2dB(data):
+    """Return the dB magnitude of a complex S-parameter array."""
+    return 20 * np.log10(np.abs(data))
+
+
+def mlin(x):
+    """Return the mean dB magnitude of a complex S-parameter array."""
+    return np.mean(lin2dB(x))
+
 
 class VNA:
     def __init__(
@@ -380,6 +403,54 @@ class VNA:
         self.switch_fn("VNARF")  # switch to receiver
         s11["rec"] = self.measure_S11()
         return s11
+
+    def activeflag(self, data, cal, thresholds=None):
+        """
+        Sanity-check field calibration and measurement S11 dictionaries.
+
+        Computes the mean dB magnitude of each entry and checks that it
+        falls within a ``(low, high)`` band. Useful for catching obviously
+        broken measurements before committing them.
+
+        Parameters
+        ----------
+        data : dict
+            Measurement dictionary. Either contains ``"rec"`` (receiver
+            measurement) or any subset of ``{"ant", "load", "noise"}``.
+        cal : dict
+            Calibration dictionary with keys ``"VNAO"``, ``"VNAS"``,
+            ``"VNAL"``.
+        thresholds : dict, optional
+            Mapping from key to ``(low, high)`` band in dB. Either bound
+            may be ``None`` to disable that side of the check. Overrides
+            the defaults in :data:`DEFAULT_FLAG_THRESHOLDS`.
+
+        Returns
+        -------
+        dict
+            One boolean per checked measurement entry, plus a ``"cal"``
+            key that is ``True`` only if all calibration entries pass.
+
+        """
+        bands = {**DEFAULT_FLAG_THRESHOLDS, **(thresholds or {})}
+
+        def in_band(value, key):
+            low, high = bands[key]
+            if low is not None and value < low:
+                return False
+            if high is not None and value > high:
+                return False
+            return True
+
+        flags = {
+            "cal": all(
+                in_band(mlin(cal[k]), k) for k in ("VNAO", "VNAS", "VNAL")
+            )
+        }
+        for key in ("rec", "ant", "load", "noise"):
+            if key in data:
+                flags[key] = in_band(mlin(data[key]), key)
+        return flags
 
     def read_data(self, num_data=1):
         """

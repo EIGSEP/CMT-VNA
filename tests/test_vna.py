@@ -5,7 +5,7 @@ import tempfile
 import time
 from unittest.mock import MagicMock, call
 
-from cmt_vna.vna import IP, PORT
+from cmt_vna.vna import IP, PORT, DEFAULT_FLAG_THRESHOLDS, lin2dB, mlin
 from cmt_vna.testing import DummyVNA
 
 
@@ -423,3 +423,89 @@ class TestVNAIntegration:
 
             files = list(Path(tmpdir).glob("*.npz"))
             assert len(files) == 1
+
+
+def _const_lin(db_value, n=16):
+    """Build a constant complex S11 array with magnitude `10**(db/20)`."""
+    return np.full(n, 10 ** (db_value / 20), dtype=complex)
+
+
+class TestDbHelpers:
+    def test_lin2dB_scalar(self):
+        assert lin2dB(np.array([1.0])) == pytest.approx(0.0)
+        assert lin2dB(np.array([0.1])) == pytest.approx(-20.0)
+
+    def test_lin2dB_complex_uses_magnitude(self):
+        # magnitude of 3+4j is 5 → 20*log10(5) ≈ 13.979
+        assert lin2dB(np.array([3 + 4j])) == pytest.approx(13.9794, rel=1e-4)
+
+    def test_mlin_matches_manual_mean(self):
+        arr = np.array([1.0, 0.1])
+        assert mlin(arr) == pytest.approx(np.mean([0.0, -20.0]))
+
+
+class TestActiveFlag:
+    def setup_method(self):
+        self.vna = DummyVNA()
+        # Open/short near 0 dB, load at -35 dB → all pass defaults.
+        self.good_cal = {
+            "VNAO": _const_lin(-1),
+            "VNAS": _const_lin(-1),
+            "VNAL": _const_lin(-35),
+        }
+
+    def test_rec_branch_pass(self):
+        data = {"rec": _const_lin(-10)}
+        flags = self.vna.activeflag(data, self.good_cal)
+        assert flags == {"cal": True, "rec": True}
+
+    def test_rec_branch_fail_above_upper(self):
+        data = {"rec": _const_lin(-1)}  # above -5 dB upper bound
+        flags = self.vna.activeflag(data, self.good_cal)
+        assert flags["rec"] is False
+
+    def test_ant_load_noise_branch(self):
+        data = {
+            "ant": _const_lin(-10),
+            "load": _const_lin(-40),
+            "noise": _const_lin(-40),
+        }
+        flags = self.vna.activeflag(data, self.good_cal)
+        assert flags == {
+            "cal": True,
+            "ant": True,
+            "load": True,
+            "noise": True,
+        }
+
+    def test_optional_keys_missing_are_skipped(self):
+        # Only "ant" present — no KeyError for missing load/noise.
+        data = {"ant": _const_lin(-10)}
+        flags = self.vna.activeflag(data, self.good_cal)
+        assert flags == {"cal": True, "ant": True}
+
+    def test_cal_fails_when_open_out_of_band(self):
+        bad_cal = dict(self.good_cal, VNAO=_const_lin(-10))  # below -5 dB
+        flags = self.vna.activeflag({"rec": _const_lin(-10)}, bad_cal)
+        assert flags["cal"] is False
+        assert flags["rec"] is True
+
+    def test_cal_fails_when_load_above_upper(self):
+        bad_cal = dict(self.good_cal, VNAL=_const_lin(-10))  # above -30 dB
+        flags = self.vna.activeflag({"rec": _const_lin(-10)}, bad_cal)
+        assert flags["cal"] is False
+
+    def test_threshold_override(self):
+        data = {"rec": _const_lin(-1)}
+        # Override rec band to allow -1 dB → should now pass.
+        flags = self.vna.activeflag(
+            data, self.good_cal, thresholds={"rec": (None, 0)}
+        )
+        assert flags["rec"] is True
+
+    def test_default_thresholds_shape(self):
+        # Sanity check defaults weren't accidentally reshaped.
+        for key in ("VNAO", "VNAS", "VNAL", "rec", "ant", "load", "noise"):
+            low, high = DEFAULT_FLAG_THRESHOLDS[key]
+            assert low is None or isinstance(low, (int, float))
+            assert high is None or isinstance(high, (int, float))
