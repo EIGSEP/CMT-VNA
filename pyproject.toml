@@ -8,7 +8,7 @@ version = "0.0.1"
 description = "Control code for CMT VNA."
 readme = "README.md"
 license = {text = "MIT"}
-authors = [{ name="Charlie Tolley", email="tolley412e@berkeley.edu" }]
+authors = [{ name="Christian Hellum Bye", email="cbh@berkeley.edu" }]
 requires-python = ">=3.9"
 classifiers = [
   "Intended Audience :: Science/Research",
@@ -19,7 +19,7 @@ classifiers = [
 dependencies = [
   "numpy",
   "matplotlib",
-  "picohost>=0.0.2a3",
+  "picohost>=0.0.3",
   "pyserial",
   "pyVISA",
   "pyvisa-py",
@@ -27,13 +27,18 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "black",
-  "flake8",
+  "build",
+  "twine",
+  "ruff",
   "pytest",
   "pytest-cov",
   "pytest-mock",
+  "pytest-timeout",
   "pyserial-mock",
 ]
+
+[tool.setuptools]
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -42,18 +47,20 @@ where = ["src"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = [
-  "--cov=src",
+  "--cov=cmt_vna",
   "--cov-report=term-missing",
   "--cov-report=xml",
   "--junitxml=junit.xml",
   "-o junit_family=legacy",
+  "--timeout=60",
 ]
 
-[tool.black]
+[tool.ruff]
 line-length = 79
-extend-exclude = """
-(
-  ^/scripts/test_lab_scripts/
-  | .*\\.ipynb$
-)
-"""
+exclude = ["scripts/lab_test_scripts", "examples", "*.ipynb"]
+
+[tool.ruff.lint]
+extend-ignore = ["E203"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/*/__init__.py" = ["F401"]

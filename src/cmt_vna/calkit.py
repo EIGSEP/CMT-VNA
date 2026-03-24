@@ -207,7 +207,6 @@ def calibrate(gammas, sprms_dict):
 
 
 class CalStandard:
-
     def __init__(self, Z_ter, Z_off, l_x_gamma, Z0=50):
         """
         Useful measured and derived values for a calibration standard. Note
@@ -285,7 +284,6 @@ class CalStandard:
 
 
 class CalKit:
-
     def __init__(self, freq_Hz, Z0=50):
         """
         Useful measured and derived values for a calibration kit. Note that all

@@ -77,7 +77,7 @@ try:
             vna.add_OSL(std_key="vna")
             snw.switch("VNAANT")
 
-        print(f"reading file {i+1} of {args.max_files}")
+        print(f"reading file {i + 1} of {args.max_files}")
         vna.read_data(num_data=args.num_data)
         vna.write_data(outdir=args.outdir)
         print("finished writing")
