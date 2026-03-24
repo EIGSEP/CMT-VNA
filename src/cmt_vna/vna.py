@@ -11,7 +11,6 @@ PORT = 5025
 
 
 class VNA:
-
     def __init__(
         self,
         ip=IP,
