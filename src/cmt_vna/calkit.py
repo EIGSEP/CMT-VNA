@@ -458,7 +458,7 @@ class S911T(CalKit):
         np.array (3,N)
             (S11, S12*S21, S22) s matrix.
         """
-        if not model:
+        if model is None:
             model = self.std_gamma  # get model standards if none are provided
         sparams = network_sparams(model, stds_meas)
         return sparams

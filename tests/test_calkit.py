@@ -247,3 +247,15 @@ def test_sparams():
     assert np.allclose(sprms[0], 0)  # s11
     assert np.allclose(sprms[1], 1)  # s12s21
     assert np.allclose(sprms[2], 0)  # s22
+
+
+def test_sparams_with_explicit_model():
+    """Passing model as a numpy array should not raise ValueError."""
+    fake_freqs = np.linspace(50e6, 250e6, 1001)
+    calkit = cal.S911T(freq_Hz=fake_freqs)
+    gamma = calkit.std_gamma
+
+    sprms = calkit.sparams(gamma, model=gamma)
+    assert np.allclose(sprms[0], 0)  # s11
+    assert np.allclose(sprms[1], 1)  # s12s21
+    assert np.allclose(sprms[2], 0)  # s22
