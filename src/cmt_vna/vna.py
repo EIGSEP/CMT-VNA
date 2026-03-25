@@ -76,6 +76,7 @@ class VNA:
 
         # settings
         s.write("CALC:FORM SCOM\n")  # get s11 as real and imag
+        s.write("FORM:DATA REAL\n")  # 64-bit binary transfer
         s.write("SENS1:AVER:COUN 1\n")  # number of averages
         # linear sweep instead of point by point
         s.write("SWE:TYPE LIN\n")
@@ -143,14 +144,12 @@ class VNA:
 
     @property
     def freqs(self):
-        freq = self.s.query_ascii_values(
-            "SENS1:FREQ:DATA?", container=np.array
+        return self.s.query_binary_values(
+            "SENS1:FREQ:DATA?",
+            datatype="d",
+            is_big_endian=True,
+            container=np.array,
         )
-        try:
-            f_array = np.array([float(i) for i in freq])
-        except (TypeError, ValueError):
-            f_array = None
-        return f_array
 
     @property
     def header(self):
@@ -250,14 +249,16 @@ class VNA:
         self.wait_for_opc()  # wait for operation complete
         if verbose:
             print("swept")
-        data = self.s.query_ascii_values(
-            "CALC:TRAC:DATA:FDAT?", container=np.array
+        data = self.s.query_binary_values(
+            "CALC:TRAC:DATA:FDAT?",
+            datatype="d",
+            is_big_endian=True,
+            container=np.array,
         )
         self.wait_for_opc()  # wait for operation complete
         if verbose:
             sweep_time = time.time() - t0
             print(f"{sweep_time:.2f} seconds to sweep.")
-        data = np.array([float(i) for i in data])  # change to complex floats
         data = data[0::2] + 1j * data[1::2]
         return data
 
