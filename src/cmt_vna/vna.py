@@ -103,7 +103,8 @@ class VNA:
 
         # settings
         s.write("CALC:FORM SCOM\n")  # get s11 as real and imag
-        s.write("FORM:DATA REAL\n")  # 64-bit binary transfer
+        s.write("FORM:BORD NORM\n")  # big-endian binary transfer
+        s.write("FORM:DATA REAL,64\n")  # 64-bit binary transfer
         s.write("SENS1:AVER:COUN 1\n")  # number of averages
         # linear sweep instead of point by point
         s.write("SWE:TYPE LIN\n")
