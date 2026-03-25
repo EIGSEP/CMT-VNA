@@ -85,9 +85,11 @@ class TestDummyVNA:
         assert self.vna.power_dBm == -10
 
     def test_freqs_property(self):
-        """Test freqs property calculation."""
-        # Should return None when not properly configured
-        assert self.vna.freqs is None
+        """Test freqs property returns correct frequency array."""
+        # Before setup, returns DummyResource defaults
+        freqs = self.vna.freqs
+        assert isinstance(freqs, np.ndarray)
+        assert len(freqs) == 1000
 
         # Configure frequency range
         self.vna.fstart = 1e6
@@ -128,19 +130,8 @@ class TestDummyVNA:
         assert isinstance(header["freqs"], np.ndarray)
 
     def test_wait_for_opc(self):
-        """Test wait_for_opc method."""
-        # Should complete immediately with no error
+        """Test wait_for_opc method completes without error."""
         self.vna.wait_for_opc()
-
-        # Test with wait time
-        start_time = time.time()
-        self.vna.wait_for_opc(wait=0.1)
-        elapsed = time.time() - start_time
-        assert elapsed >= 0.1
-
-        # Test with error
-        with pytest.raises(TimeoutError):
-            self.vna.wait_for_opc(err=True)
 
     def test_measure_s11(self):
         """Test S11 measurement."""
@@ -349,25 +340,25 @@ class TestDummyVNA:
 class TestVNAEdgeCases:
     """Test edge cases and error conditions for VNA classes."""
 
-    def test_frequency_array_with_missing_params(self):
-        """Test freqs property when parameters are missing."""
+    def test_frequency_array_updates_with_params(self):
+        """Test freqs property updates when VNA parameters change."""
         vna = DummyVNA()
 
-        # Missing all parameters
-        assert vna.freqs is None
-
-        # Missing some parameters
-        vna.fstart = 1e6
-        assert vna.freqs is None
-
-        vna.fstop = 250e6
-        assert vna.freqs is None
-
-        # All parameters set
-        vna.npoints = 1000
+        # Before explicit setup, DummyResource returns its defaults
         freqs = vna.freqs
-        assert freqs is not None
         assert isinstance(freqs, np.ndarray)
+        assert len(freqs) == 1000
+
+        # Setting parameters updates the resource state via SCPI writes
+        vna.fstart = 50e6
+        vna.fstop = 200e6
+        vna.npoints = 500
+
+        freqs = vna.freqs
+        assert isinstance(freqs, np.ndarray)
+        assert len(freqs) == 500
+        np.testing.assert_allclose(freqs[0], 50e6)
+        np.testing.assert_allclose(freqs[-1], 200e6)
 
     def test_measure_s11_with_uninitialized_vna(self):
         """Test S11 measurement without proper setup."""
@@ -380,7 +371,7 @@ class TestVNAEdgeCases:
         assert len(s11) == 1000
 
     def test_header_with_none_values(self):
-        """Test header when some values are None."""
+        """Test header when VNA properties are not explicitly set."""
         vna = DummyVNA()
         header = vna.header
 
@@ -389,7 +380,8 @@ class TestVNAEdgeCases:
         assert header["npoints"] is None
         assert header["ifbw"] is None
         assert header["power_dBm"] is None
-        assert header["freqs"] is None
+        # freqs comes from the resource, which has defaults
+        assert isinstance(header["freqs"], np.ndarray)
 
 
 class TestVNAIntegration:

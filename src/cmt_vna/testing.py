@@ -1,5 +1,4 @@
 import numpy as np
-import time
 
 from . import VNA
 
@@ -7,56 +6,81 @@ from . import VNA
 class DummyResource:
     """
     Dummy PyVisa.Resource class for testing purposes.
-    This class does not implement any real functionality.
-    It is used to test the VNA class without needing a real connection.
+    Parses SCPI write commands to track VNA state (npoints, fstart, fstop)
+    and responds to query commands with synthetic data.
     """
 
-    def __init__(self, *args, **kwargs):
-        pass
+    _DEFAULT_NPOINTS = 1000
+    _DEFAULT_FSTART = 1e6
+    _DEFAULT_FSTOP = 250e6
+
+    def __init__(self):
+        self.read_termination = None
+        self.timeout = None
+        self._npoints = self._DEFAULT_NPOINTS
+        self._fstart = self._DEFAULT_FSTART
+        self._fstop = self._DEFAULT_FSTOP
 
     def write(self, command):
-        pass
+        """Parse SCPI commands to track instrument state."""
+        cmd = command.strip()
+        if cmd.startswith("SENS1:FREQ:STAR"):
+            parts = cmd.split()
+            self._fstart = float(parts[1])
+        elif cmd.startswith("SENS1:FREQ:STOP"):
+            parts = cmd.split()
+            self._fstop = float(parts[1])
+        elif cmd.startswith("SENS1:SWE:POIN"):
+            parts = cmd.split()
+            self._npoints = int(float(parts[1]))
 
-    @property
-    def mock_query_command(self):
-        """
-        The command that the mock will respond to when queried.
-        This is used to simulate a query response.
-        """
-        return "CALC:TRAC:DATA:FDAT?"
+    def query(self, command):
+        """Respond to simple SCPI queries."""
+        cmd = command.strip()
+        if cmd == "*IDN?":
+            return "DummyVNA"
+        if cmd == "*OPC?":
+            return "1"
+        raise ValueError(f"Query command {command!r} not recognized by mock.")
 
-    def query_ascii_values(self, command, container=None, npoints=1000):
+    def query_binary_values(
+        self, command, datatype="d", is_big_endian=True, container=None
+    ):
         """
-        Simulate querying a value from the VNA. The mock only
-        implements the case where the request is for data. Thus
-        ``command'' must as specified in the attribute
-        `mock_query_command'. The data returned is complex-valued
-        where even indices correspond to the real part and odd indices
-        correspond to the imaginary part. The number of points returned
-        is therefore `2 * npoints'.
+        Simulate querying binary array data from the VNA.
+
+        Supports:
+        - CALC:TRAC:DATA:FDAT? : interleaved real/imag S11 data
+          (2 * npoints values, all zeros)
+        - SENS1:FREQ:DATA? : frequency array (npoints values)
 
         Parameters
         ----------
         command : str
-            Must be `mock_query_command'.
-        container : None
-            Not used in this mock implementation.
-        npoints : int
-            Half the number of points to return.
+            SCPI query command.
+        datatype : str
+            Data type format character (ignored in mock).
+        is_big_endian : bool
+            Byte order (ignored in mock).
+        container : callable or None
+            Container for the returned data (e.g. np.array).
 
         Returns
         -------
-        data : np.ndarray
+        data : np.ndarray or list
             Simulated data response from the VNA.
 
-        Raises
-        -------
-        ValueError
-            If the command is not `mock_query_command'.
         """
-        if command != self.mock_query_command:
-            raise ValueError(f"Command {command} not recognized by mock.")
-        return np.zeros(2 * npoints)
+        cmd = command.strip()
+        if cmd == "CALC:TRAC:DATA:FDAT?":
+            data = np.zeros(2 * self._npoints)
+        elif cmd == "SENS1:FREQ:DATA?":
+            data = np.linspace(self._fstart, self._fstop, self._npoints)
+        else:
+            raise ValueError(f"Command {command!r} not recognized by mock.")
+        if container is not None:
+            data = container(data)
+        return data
 
     def close(self):
         pass
@@ -64,61 +88,23 @@ class DummyResource:
 
 class DummyVNA(VNA):
     """
-    Basic Mock VNA for testing purposes. This class passes all methods.
-    Basic attributes are still set in the __init__ method.
+    Mock VNA for testing purposes. Uses DummyResource instead of a real
+    PyVISA connection. All base class methods work through the stateful
+    DummyResource, so the code paths match the real VNA as closely as
+    possible.
     """
 
     def _configure_vna(self):
         """
-        Override the _configure_vna method to do nothing, except
-        replacing the attribute `s' that communicates with the VNA with
-        a dummy resource that does nothng.
+        Override _configure_vna to use DummyResource instead of real
+        PyVISA, while still exercising the SCPI initialization writes.
         """
-        return DummyResource()
-
-    @property
-    def id(self):
-        """
-        Override the id property to return a dummy ID.
-        """
-        return "DummyVNA"
-
-    @property
-    def freqs(self):
-        """
-        Override the freqs property to calculate the frequencies
-        instead of reading from the VNA.
-
-        Returns:
-            np.ndarray: Array of frequencies.
-
-        """
-        try:
-            f = np.linspace(self.fstart, self.fstop, self.npoints)
-        except (AttributeError, TypeError):
-            f = None
-        return f
-
-    def wait_for_opc(self, wait=0, err=False):
-        """
-        Override the wait_for_opc method. Sleeps for `wait' seconds
-        and optionally raises a TimeoutError if `err' is True.
-        This is used to simulate the operation complete check.
-
-        Parameters
-        ----------
-        wait : float
-            Time to wait for the operation to complete in seconds.
-        err : bool
-            If True, raises an exception to simulate an error.
-
-        Raises
-        -------
-        TimeoutError
-           If `err' is True.
-
-        """
-        if wait > 0:
-            time.sleep(wait)
-        if err:
-            raise TimeoutError("Operation timed out")
+        s = DummyResource()
+        s.read_termination = "\n"
+        s.timeout = self.vna_timeout
+        s.write("CALC:FORM SCOM\n")
+        s.write("FORM:DATA REAL\n")
+        s.write("SENS1:AVER:COUN 1\n")
+        s.write("SWE:TYPE LIN\n")
+        s.write("TRIG:SOUR BUS\n")
+        return s
