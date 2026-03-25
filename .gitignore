@@ -12,3 +12,6 @@ dist/
 
 .coverage
 *.xml
+
+data/
+examples/
