@@ -3,7 +3,7 @@
   "packages": {
     ".": {
       "release-type": "python",
-      "package-name": "cmt_vna",
+      "package-name": "eigsep-vna",
       "include-component-in-tag": false,
       "extra-files": [
         "pyproject.toml"
