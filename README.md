@@ -46,7 +46,7 @@ Install the software from https://coppermountaintech.com/download-free-vna-softw
 > [!NOTE]
 > For newer versions of Ubuntu (20+), there's a known issue where the package is incompatible with the fonts of the OS. The fix (from the FAQ) is:
 >
-> Download the v12 font package (fontconfig-config_2.12.6-0ubuntu2_all.deb) from http://security.ubuntu.com/ubuntu/pool/main//f/fontconfig/
+> Download the v12 font package (fontconfig-config_2.12.6-0ubuntu2_all.deb) from https://security.ubuntu.com/ubuntu/pool/main/f/fontconfig/
 > Then install it by running:
 > ```
 > sudo dpkg --install ~/Downloads/fontconfig-config_2.12.6-0ubuntu2_all.deb
