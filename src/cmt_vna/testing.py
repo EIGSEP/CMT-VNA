@@ -103,7 +103,8 @@ class DummyVNA(VNA):
         s.read_termination = "\n"
         s.timeout = self.vna_timeout
         s.write("CALC:FORM SCOM\n")
-        s.write("FORM:DATA REAL\n")
+        s.write("FORM:BORD NORM\n")
+        s.write("FORM:DATA REAL,64\n")
         s.write("SENS1:AVER:COUN 1\n")
         s.write("SWE:TYPE LIN\n")
         s.write("TRIG:SOUR BUS\n")
