@@ -3,6 +3,12 @@ name: Release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to publish (e.g. v0.1.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -10,6 +16,7 @@ permissions:
 
 jobs:
   release-please:
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
@@ -22,7 +29,10 @@ jobs:
 
   pypi-publish:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created }}
+    if: |
+      always() &&
+      (needs.release-please.outputs.release_created ||
+       github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -30,6 +40,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
