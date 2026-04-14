@@ -42,7 +42,7 @@ sparams_to_find = ["VNAANT", "VNAN", "VNAO", "VNAS", "VNAL"]
 
 i = 0
 snw = SwitchNetwork()
-vna = VNA(ip="127.0.0.1", port=5025, switch_network=snw)
+vna = VNA(ip="127.0.0.1", port=5025, switch_fn=snw.switch)
 print(f"Connected to {vna.id}.")
 freq = vna.setup(
     fstart=args.fstart,

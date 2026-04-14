@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 import tempfile
 import time
+from unittest.mock import MagicMock, call
 
-from picohost.testing import DummyPicoRFSwitch
 from cmt_vna.vna import IP, PORT
 from cmt_vna.testing import DummyVNA
 
@@ -14,16 +14,15 @@ class TestDummyVNA:
 
     def setup_method(self):
         """Set up test fixtures before each test method."""
-        self.switch_nw = DummyPicoRFSwitch(port="/dev/ttyUSB0")
-        self.switch_nw.connect()
-        self.vna = DummyVNA(switch_network=self.switch_nw)
+        self.switch_fn = MagicMock(return_value=True)
+        self.vna = DummyVNA(switch_fn=self.switch_fn)
 
     def test_initialization(self):
         """Test DummyVNA initialization."""
         assert self.vna.vna_ip == IP
         assert self.vna.vna_port == PORT
         assert self.vna.save_dir == Path(".")
-        assert self.vna.switch_nw is self.switch_nw
+        assert self.vna.switch_fn is self.switch_fn
         assert self.vna.data == {}
         assert self.vna.stds_meta == {}
 
@@ -37,7 +36,7 @@ class TestDummyVNA:
         assert vna.vna_port == 1234
         assert vna.vna_timeout == 5000000  # converted to milliseconds
         assert vna.save_dir == save_dir
-        assert vna.switch_nw is None  # No switch network by default
+        assert vna.switch_fn is None  # No switch_fn by default
 
     def test_id_property(self):
         """Test the id property returns expected value."""
@@ -158,9 +157,9 @@ class TestDummyVNA:
         s11_verbose = self.vna.measure_S11(verbose=True)
         assert np.array_equal(s11, s11_verbose)
 
-    def test_measure_osl_without_switch_network(self, monkeypatch):
-        """Test OSL measurement without switch network (manual mode)."""
-        self.vna.switch_nw = None  # ensure no switch network is set
+    def test_measure_osl_without_switch_fn(self, monkeypatch):
+        """Test OSL measurement without switch_fn (manual mode)."""
+        self.vna.switch_fn = None  # ensure no switch_fn is set
         self.vna.setup(1e6, 250e6, 1000, 100, -5)
 
         # Mock input() to simulate user pressing enter
@@ -177,10 +176,9 @@ class TestDummyVNA:
             assert len(std) == 1000
             assert std.dtype == complex
 
-    def test_measure_osl_with_switch_network(self, mocker):
-        """Test OSL measurement with switch network."""
+    def test_measure_osl_with_switch_fn(self):
+        """Test OSL measurement with switch_fn."""
         self.vna.setup(1e6, 250e6, 1000, 100, -5)
-        spy = mocker.spy(self.vna.switch_nw, "switch")
 
         osl = self.vna.measure_OSL()
         assert isinstance(osl, dict)
@@ -191,15 +189,18 @@ class TestDummyVNA:
             assert data.dtype == complex
             assert np.all(data == 0)  # DummyResource returns zeros
 
-        # Verify switch network was called correctly
-        assert spy.call_count == 3
-        spy.assert_has_calls(
-            [
-                mocker.call("VNAO"),
-                mocker.call("VNAS"),
-                mocker.call("VNAL"),
-            ]
+        # Verify switch_fn was called correctly
+        assert self.switch_fn.call_count == 3
+        self.switch_fn.assert_has_calls(
+            [call("VNAO"), call("VNAS"), call("VNAL")]
         )
+
+    def test_measure_osl_switch_fn_failure_raises(self):
+        """measure_OSL raises RuntimeError when switch_fn returns falsy."""
+        self.vna.setup(1e6, 250e6, 1000, 100, -5)
+        self.vna.switch_fn = MagicMock(return_value=False)
+        with pytest.raises(RuntimeError, match="Failed to switch"):
+            self.vna.measure_OSL()
 
     def test_add_osl(self, monkeypatch):
         """Test add_OSL method."""
@@ -214,27 +215,22 @@ class TestDummyVNA:
         assert isinstance(self.vna.data["test_std"], np.ndarray)
         assert self.vna.data["test_std"].shape == (3, 1000)
 
-    def test_measure_ant_without_switch_network(self):
-        """Test antenna measurement without switch network raises error."""
-        self.vna.switch_nw = None  # ensure no switch network is set
-        with pytest.raises(RuntimeError, match="No switch network set"):
+    def test_measure_ant_without_switch_fn(self):
+        """Test antenna measurement without switch_fn raises error."""
+        self.vna.switch_fn = None  # ensure no switch_fn is set
+        with pytest.raises(RuntimeError, match="No switch_fn set"):
             self.vna.measure_ant()
 
-    def test_measure_ant_with_switch_network(self, mocker):
-        """Test antenna measurement with switch network."""
+    def test_measure_ant_with_switch_fn(self):
+        """Test antenna measurement with switch_fn."""
         self.vna.setup(1e6, 250e6, 1000, 100, -5)
-        spy = mocker.spy(self.vna.switch_nw, "switch")
 
         # Test with noise measurement
         s11 = self.vna.measure_ant(measure_noise=True)
 
-        assert spy.call_count == 3
-        spy.assert_has_calls(
-            [
-                mocker.call("VNAANT"),
-                mocker.call("VNANOFF"),
-                mocker.call("VNANON"),
-            ]
+        assert self.switch_fn.call_count == 3
+        self.switch_fn.assert_has_calls(
+            [call("VNAANT"), call("VNANOFF"), call("VNANON")]
         )
 
         assert "ant" in s11
@@ -245,32 +241,27 @@ class TestDummyVNA:
         assert isinstance(s11["noise"], np.ndarray)
 
         # Test without noise measurement
-        spy.reset_mock()
+        self.switch_fn.reset_mock()
         s11_no_noise = self.vna.measure_ant(
             measure_load=False, measure_noise=False
         )
-        assert spy.call_count == 1
-        spy.assert_has_calls(
-            [
-                mocker.call("VNAANT"),
-            ]
-        )
+        assert self.switch_fn.call_count == 1
+        self.switch_fn.assert_has_calls([call("VNAANT")])
 
         assert "ant" in s11_no_noise
         assert "noise" not in s11_no_noise
 
-    def test_measure_rec_without_switch_network(self):
-        """Test receiver measurement without switch network raises error."""
-        self.vna.switch_nw = None  # ensure no switch network is set
-        with pytest.raises(RuntimeError, match="No switch network set"):
+    def test_measure_rec_without_switch_fn(self):
+        """Test receiver measurement without switch_fn raises error."""
+        self.vna.switch_fn = None  # ensure no switch_fn is set
+        with pytest.raises(RuntimeError, match="No switch_fn set"):
             self.vna.measure_rec()
 
-    def test_measure_rec_with_switch_network(self, mocker):
-        """Test receiver measurement with switch network."""
+    def test_measure_rec_with_switch_fn(self):
+        """Test receiver measurement with switch_fn."""
         self.vna.setup(1e6, 250e6, 1000, 100, -5)
-        spy = mocker.spy(self.vna.switch_nw, "switch")
         s11 = self.vna.measure_rec()
-        spy.assert_called_once_with("VNARF")
+        self.switch_fn.assert_called_once_with("VNARF")
         assert "rec" in s11
         assert isinstance(s11["rec"], np.ndarray)
 
