@@ -17,7 +17,7 @@ class VNA:
         port=PORT,
         timeout=1000,
         save_dir=Path("."),
-        switch_network=None,
+        switch_fn=None,
     ):
         """
         Class controlling Copper Mountain VNA.
@@ -35,9 +35,13 @@ class VNA:
         save_dir : Path or str
             Directory to save data to. Must be able to instantiate a Path
             object.
-        switch_network : picohost.PicoRFSwitch or None
-            Instance of SwitchNetwork to automatically switch the DUT or
-            standards. If None, assumes switching is done in another way.
+        switch_fn : Callable[[str], Any] or None
+            Callable invoked to route the RF signal to a given standard or
+            DUT. Called with the state name as a string (e.g. ``"VNAO"``,
+            ``"VNAANT"``) and expected to return a truthy value on success
+            or raise on hard failure. Returning falsy is treated as a
+            switch-failure by ``measure_OSL``. If None, OSL prompts for
+            manual switching and ``measure_ant``/``measure_rec`` raise.
 
         """
 
@@ -50,7 +54,7 @@ class VNA:
 
         self._clear_data()
         self.save_dir = Path(save_dir)
-        self.switch_nw = switch_network
+        self.switch_fn = switch_fn
 
         # configure and connect to VNA
         self.vna_ip = ip
@@ -282,13 +286,13 @@ class VNA:
         OSL = {}
         standards = ["VNAO", "VNAS", "VNAL"]  # set osl standard list
         for standard in standards:
-            if self.switch_nw is None:  # testing/manual osl measurements
+            if self.switch_fn is None:  # testing/manual osl measurements
                 print(f"connect {standard} and press enter")
                 input()
             # automatic osl measurements
             else:
-                sw = self.switch_nw.switch(standard)
-                if sw == 0:
+                sw = self.switch_fn(standard)
+                if not sw:
                     raise RuntimeError(
                         f"Failed to switch to {standard}. "
                         "Check the switch network."
@@ -316,8 +320,8 @@ class VNA:
         """
         Measure S11 of antenna. If measure_noise is True, also measures
         S11 of noise source. This is a convenience function that uses the
-        switch network to switch to the right DUT. It therefore requires
-        the switch_nw attribute to be set.
+        switch callable to route the RF signal to the right DUT. It
+        therefore requires the switch_fn attribute to be set.
 
         Parameters
         ----------
@@ -334,29 +338,29 @@ class VNA:
         Raises
         -------
         RuntimeError
-            If the attribute switch_nw is None.
+            If the attribute switch_fn is None.
 
         """
-        if self.switch_nw is None:
-            raise RuntimeError("No switch network set, cannot measure S11.")
+        if self.switch_fn is None:
+            raise RuntimeError("No switch_fn set, cannot measure S11.")
         s11 = {}
-        self.switch_nw.switch("VNAANT")  # switch to antenna
+        self.switch_fn("VNAANT")  # switch to antenna
         s11["ant"] = self.measure_S11()
         if measure_load:
             # switch to load (noise source off)
-            self.switch_nw.switch("VNANOFF")
+            self.switch_fn("VNANOFF")
             s11["load"] = self.measure_S11()
         if measure_noise:
             # switch to noise source
-            self.switch_nw.switch("VNANON")
+            self.switch_fn("VNANON")
             s11["noise"] = self.measure_S11()
         return s11
 
     def measure_rec(self):
         """
         Measure S11 of the receiver. This is a convenience function that uses
-        the switch network to switch to the right DUT. It therefore requires
-        the switch_nw attribute to be set.
+        the switch callable to route the RF signal to the receiver. It
+        therefore requires the switch_fn attribute to be set.
 
         Returns
         -------
@@ -367,13 +371,13 @@ class VNA:
         Raises
         -------
         RuntimeError
-            If the attribute switch_nw is None.
+            If the attribute switch_fn is None.
 
         """
-        if self.switch_nw is None:
-            raise RuntimeError("No switch network set, cannot measure S11.")
+        if self.switch_fn is None:
+            raise RuntimeError("No switch_fn set, cannot measure S11.")
         s11 = {}
-        self.switch_nw.switch("VNARF")  # switch to receiver
+        self.switch_fn("VNARF")  # switch to receiver
         s11["rec"] = self.measure_S11()
         return s11
 

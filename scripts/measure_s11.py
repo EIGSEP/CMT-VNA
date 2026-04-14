@@ -60,7 +60,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 snw = SwitchNetwork()  # make switch network object
-vna = VNA(ip="127.0.0.1", port=5025, switch_network=snw)
+vna = VNA(ip="127.0.0.1", port=5025, switch_fn=snw.switch)
 print(f"Connected to {vna.id}.")
 
 freq = vna.setup(
