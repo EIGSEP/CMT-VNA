@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/EIGSEP/CMT-VNA/compare/v1.1.0...v1.1.1) (2026-04-14)
+
+
+### Bug Fixes
+
+* explicitly set binary byte order and 64-bit precision in SCPI config ([7e817f8](https://github.com/EIGSEP/CMT-VNA/commit/7e817f839f2d282147488c237a4e3c69e1f12b7a))
+
 ## [1.1.0](https://github.com/EIGSEP/CMT-VNA/compare/v1.0.0...v1.1.0) (2026-04-14)
 
 
