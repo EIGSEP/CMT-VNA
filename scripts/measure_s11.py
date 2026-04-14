@@ -1,6 +1,6 @@
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 import time
-from switch_network import SwitchNetwork
+from picohost import PicoRFSwitch
 from cmt_vna import VNA
 import warnings
 
@@ -9,6 +9,12 @@ warnings.filterwarnings("ignore")
 parser = ArgumentParser(
     description="Measure S11 of a DUT connected to a VNA.",
     formatter_class=ArgumentDefaultsHelpFormatter,
+)
+parser.add_argument(
+    "--switch_port",
+    type=str,
+    default="/dev/ttyACM0",
+    help="Serial port for the switch network.",
 )
 parser.add_argument(
     "--osl",
@@ -59,7 +65,7 @@ parser.add_argument(
     help="Number of datasets to take each time.",
 )
 args = parser.parse_args()
-snw = SwitchNetwork()  # make switch network object
+snw = PicoRFSwitch(port=args.switch_port)
 vna = VNA(ip="127.0.0.1", port=5025, switch_fn=snw.switch)
 print(f"Connected to {vna.id}.")
 
@@ -86,4 +92,4 @@ except KeyboardInterrupt:
     print("Keyboard interrupt, exiting.")
     vna.write_data(outdir=args.outdir)  # short final write
 finally:
-    snw.powerdown()
+    snw.disconnect()

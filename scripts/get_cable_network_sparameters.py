@@ -4,8 +4,8 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from datetime import datetime
 import numpy as np
 from cmt_vna import VNA
-from switch_network import SwitchNetwork
 from cmt_vna import calkit as cal
+from picohost import PicoRFSwitch
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -13,6 +13,12 @@ warnings.filterwarnings("ignore")
 parser = ArgumentParser(
     description="Script for finding the s-parameters of a cable network.",
     formatter_class=ArgumentDefaultsHelpFormatter,
+)
+parser.add_argument(
+    "--switch_port",
+    type=str,
+    default="/dev/ttyACM0",
+    help="Serial port for the switch.",
 )
 parser.add_argument(
     "--fstart", type=float, default=1e6, help="Start frequency in Hz."
@@ -41,7 +47,7 @@ args = parser.parse_args()
 sparams_to_find = ["VNAANT", "VNAN", "VNAO", "VNAS", "VNAL"]
 
 i = 0
-snw = SwitchNetwork()
+snw = PicoRFSwitch(port=args.switch_port)
 vna = VNA(ip="127.0.0.1", port=5025, switch_fn=snw.switch)
 print(f"Connected to {vna.id}.")
 freq = vna.setup(
@@ -82,3 +88,4 @@ except KeyboardInterrupt:
     print("exiting...")
 finally:
     vna.write_data(args.outdir)
+    snw.disconnect()
