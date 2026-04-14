@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/EIGSEP/CMT-VNA/compare/v1.0.0...v1.1.0) (2026-04-14)
+
+
+### Features
+
+* add a flagger for checking s11 and cal dictionaries in the field ([34c22b4](https://github.com/EIGSEP/CMT-VNA/commit/34c22b426d216bd59f49c4e1b2782ead638bc7bc))
+
+
+### Bug Fixes
+
+* use picorfswtich in vna scripts ([dc42087](https://github.com/EIGSEP/CMT-VNA/commit/dc420879e240660d4b4649b7658b60c3394853c2))
+
 ## [1.0.0](https://github.com/EIGSEP/CMT-VNA/compare/v0.0.2...v1.0.0) (2026-04-14)
 
 
