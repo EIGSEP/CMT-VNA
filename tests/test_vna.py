@@ -14,7 +14,7 @@ class TestDummyVNA:
 
     def setup_method(self):
         """Set up test fixtures before each test method."""
-        self.switch_fn = MagicMock(return_value=True)
+        self.switch_fn = MagicMock()
         self.vna = DummyVNA(switch_fn=self.switch_fn)
 
     def test_initialization(self):
@@ -186,44 +186,44 @@ class TestDummyVNA:
             [call("VNAO"), call("VNAS"), call("VNAL")]
         )
 
-    def test_measure_osl_switch_fn_failure_raises(self):
-        """measure_OSL raises RuntimeError when switch_fn returns falsy."""
+    def test_measure_osl_switch_fn_failure_propagates(self):
+        """measure_OSL propagates exceptions raised by switch_fn."""
         self.vna.setup(1e6, 250e6, 1000, 100, -5)
-        self.vna.switch_fn = MagicMock(return_value=False)
-        with pytest.raises(RuntimeError, match="Failed to switch"):
+        self.vna.switch_fn = MagicMock(side_effect=RuntimeError("switch boom"))
+        with pytest.raises(RuntimeError, match="switch boom"):
             self.vna.measure_OSL()
 
-    @pytest.mark.parametrize("falsy", [False, None, 0, "", {}])
-    def test_measure_ant_switch_fn_failure_raises(self, falsy):
-        """measure_ant raises RuntimeError on the very first falsy
-        switch_fn return instead of silently proceeding to measure_S11
-        — a failed switch would otherwise contaminate the S11 data.
+    def test_measure_ant_switch_fn_failure_propagates(self):
+        """measure_ant propagates the very first switch_fn exception
+        instead of silently proceeding to measure_S11 — a failed switch
+        would otherwise contaminate the S11 data.
         """
         self.vna.setup(1e6, 250e6, 1000, 100, -5)
-        self.vna.switch_fn = MagicMock(return_value=falsy)
-        with pytest.raises(RuntimeError, match="Failed to switch to VNAANT"):
+        self.vna.switch_fn = MagicMock(side_effect=RuntimeError("switch boom"))
+        with pytest.raises(RuntimeError, match="switch boom"):
             self.vna.measure_ant()
         # The subsequent load/noise switches must not be attempted.
         self.vna.switch_fn.assert_called_once_with("VNAANT")
 
-    def test_measure_ant_switch_fn_failure_on_load_raises(self):
+    def test_measure_ant_switch_fn_failure_on_load_propagates(self):
         """Contract is enforced on every ``switch_fn`` call, not only
-        the first — a mid-sequence falsy return (e.g. switch to VNANOFF)
+        the first — a mid-sequence exception (e.g. switch to VNANOFF)
         aborts before the load S11 is recorded.
         """
         self.vna.setup(1e6, 250e6, 1000, 100, -5)
-        # truthy for VNAANT, falsy for VNANOFF
-        self.vna.switch_fn = MagicMock(side_effect=[True, False])
-        with pytest.raises(RuntimeError, match="Failed to switch to VNANOFF"):
+        # succeed for VNAANT, raise for VNANOFF
+        self.vna.switch_fn = MagicMock(
+            side_effect=[None, RuntimeError("load switch boom")]
+        )
+        with pytest.raises(RuntimeError, match="load switch boom"):
             self.vna.measure_ant(measure_noise=False, measure_load=True)
         assert self.vna.switch_fn.call_count == 2
 
-    @pytest.mark.parametrize("falsy", [False, None, 0, "", {}])
-    def test_measure_rec_switch_fn_failure_raises(self, falsy):
-        """measure_rec raises RuntimeError on a falsy switch_fn return."""
+    def test_measure_rec_switch_fn_failure_propagates(self):
+        """measure_rec propagates exceptions raised by switch_fn."""
         self.vna.setup(1e6, 250e6, 1000, 100, -5)
-        self.vna.switch_fn = MagicMock(return_value=falsy)
-        with pytest.raises(RuntimeError, match="Failed to switch to VNARF"):
+        self.vna.switch_fn = MagicMock(side_effect=RuntimeError("switch boom"))
+        with pytest.raises(RuntimeError, match="switch boom"):
             self.vna.measure_rec()
         self.vna.switch_fn.assert_called_once_with("VNARF")
 
