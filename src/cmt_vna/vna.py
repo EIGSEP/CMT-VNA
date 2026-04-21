@@ -317,8 +317,8 @@ class VNA:
         Returns
         -------
         OSL : dict
-            Dictionary of standards measurements. Keys are ``open'',
-            ``short'', and ``load''.
+            Dictionary of standards measurements. Keys are ``VNAO``,
+            ``VNAS``, and ``VNAL``.
 
         Raises
         -------
