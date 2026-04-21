@@ -193,6 +193,40 @@ class TestDummyVNA:
         with pytest.raises(RuntimeError, match="Failed to switch"):
             self.vna.measure_OSL()
 
+    @pytest.mark.parametrize("falsy", [False, None, 0, "", {}])
+    def test_measure_ant_switch_fn_failure_raises(self, falsy):
+        """measure_ant raises RuntimeError on the very first falsy
+        switch_fn return instead of silently proceeding to measure_S11
+        — a failed switch would otherwise contaminate the S11 data.
+        """
+        self.vna.setup(1e6, 250e6, 1000, 100, -5)
+        self.vna.switch_fn = MagicMock(return_value=falsy)
+        with pytest.raises(RuntimeError, match="Failed to switch to VNAANT"):
+            self.vna.measure_ant()
+        # The subsequent load/noise switches must not be attempted.
+        self.vna.switch_fn.assert_called_once_with("VNAANT")
+
+    def test_measure_ant_switch_fn_failure_on_load_raises(self):
+        """Contract is enforced on every ``switch_fn`` call, not only
+        the first — a mid-sequence falsy return (e.g. switch to VNANOFF)
+        aborts before the load S11 is recorded.
+        """
+        self.vna.setup(1e6, 250e6, 1000, 100, -5)
+        # truthy for VNAANT, falsy for VNANOFF
+        self.vna.switch_fn = MagicMock(side_effect=[True, False])
+        with pytest.raises(RuntimeError, match="Failed to switch to VNANOFF"):
+            self.vna.measure_ant(measure_noise=False, measure_load=True)
+        assert self.vna.switch_fn.call_count == 2
+
+    @pytest.mark.parametrize("falsy", [False, None, 0, "", {}])
+    def test_measure_rec_switch_fn_failure_raises(self, falsy):
+        """measure_rec raises RuntimeError on a falsy switch_fn return."""
+        self.vna.setup(1e6, 250e6, 1000, 100, -5)
+        self.vna.switch_fn = MagicMock(return_value=falsy)
+        with pytest.raises(RuntimeError, match="Failed to switch to VNARF"):
+            self.vna.measure_rec()
+        self.vna.switch_fn.assert_called_once_with("VNARF")
+
     def test_add_osl(self, monkeypatch):
         """Test add_OSL method."""
         self.vna.setup(1e6, 250e6, 1000, 100, -5)

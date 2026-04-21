@@ -61,10 +61,13 @@ class VNA:
         switch_fn : Callable[[str], Any] or None
             Callable invoked to route the RF signal to a given standard or
             DUT. Called with the state name as a string (e.g. ``"VNAO"``,
-            ``"VNAANT"``) and expected to return a truthy value on success
-            or raise on hard failure. Returning falsy is treated as a
-            switch-failure by ``measure_OSL``. If None, OSL prompts for
-            manual switching and ``measure_ant``/``measure_rec`` raise.
+            ``"VNAANT"``) and expected to return a truthy value on
+            success. A falsy return is treated as a switch failure and
+            raised as ``RuntimeError`` by every ``measure_*`` method that
+            uses ``switch_fn`` — never silently ignored, because an
+            unreported failed switch would contaminate the subsequent S11
+            measurement. If None, OSL prompts for manual switching and
+            ``measure_ant``/``measure_rec`` raise.
 
         """
 
@@ -290,6 +293,23 @@ class VNA:
         data = data[0::2] + 1j * data[1::2]
         return data
 
+    def _switch_or_raise(self, state):
+        """Call ``self.switch_fn(state)`` and raise if it reports failure.
+
+        The single enforcement point for the ``switch_fn`` contract:
+        every internal switch call must go through here so a new caller
+        cannot accidentally skip the check. A falsy return (``False``,
+        ``None``, empty dict, ...) is treated as a hard failure and
+        raises ``RuntimeError`` — silently continuing would contaminate
+        the following S11 measurement.
+        """
+        sw = self.switch_fn(state)
+        if not sw:
+            raise RuntimeError(
+                f"Failed to switch to {state}. Check the switch network."
+            )
+        return sw
+
     def measure_OSL(self):
         """
         Iterate through all standards for measurement.
@@ -303,8 +323,7 @@ class VNA:
         Raises
         -------
         RuntimeError
-            If `verify_switch` is True and the switched position does
-            not match the expected standard.
+            If ``switch_fn`` is set and returns falsy for any standard.
 
         """
 
@@ -314,14 +333,8 @@ class VNA:
             if self.switch_fn is None:  # testing/manual osl measurements
                 print(f"connect {standard} and press enter")
                 input()
-            # automatic osl measurements
             else:
-                sw = self.switch_fn(standard)
-                if not sw:
-                    raise RuntimeError(
-                        f"Failed to switch to {standard}. "
-                        "Check the switch network."
-                    )
+                self._switch_or_raise(standard)
             data = self.measure_S11()
             OSL[standard] = data
         return OSL
@@ -363,21 +376,22 @@ class VNA:
         Raises
         -------
         RuntimeError
-            If the attribute switch_fn is None.
+            If the attribute switch_fn is None, or if ``switch_fn``
+            returns falsy for any requested state.
 
         """
         if self.switch_fn is None:
             raise RuntimeError("No switch_fn set, cannot measure S11.")
         s11 = {}
-        self.switch_fn("VNAANT")  # switch to antenna
+        self._switch_or_raise("VNAANT")  # switch to antenna
         s11["ant"] = self.measure_S11()
         if measure_load:
             # switch to load (noise source off)
-            self.switch_fn("VNANOFF")
+            self._switch_or_raise("VNANOFF")
             s11["load"] = self.measure_S11()
         if measure_noise:
             # switch to noise source
-            self.switch_fn("VNANON")
+            self._switch_or_raise("VNANON")
             s11["noise"] = self.measure_S11()
         return s11
 
@@ -396,13 +410,14 @@ class VNA:
         Raises
         -------
         RuntimeError
-            If the attribute switch_fn is None.
+            If the attribute switch_fn is None, or if ``switch_fn``
+            returns falsy for the receiver state.
 
         """
         if self.switch_fn is None:
             raise RuntimeError("No switch_fn set, cannot measure S11.")
         s11 = {}
-        self.switch_fn("VNARF")  # switch to receiver
+        self._switch_or_raise("VNARF")  # switch to receiver
         s11["rec"] = self.measure_S11()
         return s11
 
