@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/EIGSEP/CMT-VNA/compare/v1.2.0...v2.0.0) (2026-04-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* switch_fn callables that previously returned False to signal failure will now be treated as successful. Callers must raise on failure instead.
+
+### Code Refactoring
+
+* switch_fn contract is raises-on-failure, not truthy-return ([7ce30ad](https://github.com/EIGSEP/CMT-VNA/commit/7ce30ad7009403dd17dc33947f3a6e1c61a15535))
+
 ## [1.2.0](https://github.com/EIGSEP/CMT-VNA/compare/v1.1.1...v1.2.0) (2026-04-21)
 
 
