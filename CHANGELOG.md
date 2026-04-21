@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0](https://github.com/EIGSEP/CMT-VNA/compare/v1.1.1...v1.2.0) (2026-04-21)
+
+
+### Features
+
+* enforce switch_fn truthy-return contract in all measure_* methods ([e0e1d2a](https://github.com/EIGSEP/CMT-VNA/commit/e0e1d2aea873d4b9997098a1199c35cab8339dc3))
+
+
+### Documentation
+
+* align measure_OSL return keys with actual standard states ([94dbafc](https://github.com/EIGSEP/CMT-VNA/commit/94dbafcb014afa01525f916e33bd69f30c4a9546))
+* correct measure_OSL and measure_ant return-key docstrings ([3ac650f](https://github.com/EIGSEP/CMT-VNA/commit/3ac650f227b6c8b99a3b17d567f7f5eee7b97762))
+
 ## [1.1.1](https://github.com/EIGSEP/CMT-VNA/compare/v1.1.0...v1.1.1) (2026-04-14)
 
 
