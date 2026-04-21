@@ -371,7 +371,9 @@ class VNA:
         Returns
         -------
         s11 : dict
-            Dictionary with keys 'ant' and 'noise' (if measure_noise is True).
+            Dictionary with key ``ant``, plus optional keys ``load``
+            (if ``measure_load`` is True) and ``noise`` (if
+            ``measure_noise`` is True).
 
         Raises
         -------
