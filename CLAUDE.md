@@ -42,7 +42,7 @@ Three modules in `src/cmt_vna/`:
 ## Code Style
 
 - **ruff** for linting and formatting, 79-char line length
-- No type hints (targets Python 3.9+ without typing imports)
+- No type hints (targets Python 3.10+ without typing imports)
 - F401 (unused imports) suppressed in `__init__.py`
 - `scripts/lab_test_scripts/`, `examples/`, and `*.ipynb` are excluded from linting
 
@@ -51,7 +51,7 @@ Three modules in `src/cmt_vna/`:
 - Tests use `DummyVNA`/`DummyResource` — no hardware needed
 - pytest-timeout set to 60s per test
 - Coverage reports via pytest-cov (uploaded to Codecov in CI)
-- CI runs against Python 3.9, 3.10, 3.11, 3.12
+- CI runs against Python 3.10, 3.11, 3.12, 3.13
 
 ## Release Process
 
