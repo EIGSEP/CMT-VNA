@@ -12,7 +12,7 @@ authors = [
   { name="Charlie Tolley", email="tolley412e@berkeley.edu" },
   { name="Christian Hellum Bye", email="cbh@berkeley.edu" },
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: MIT License",
