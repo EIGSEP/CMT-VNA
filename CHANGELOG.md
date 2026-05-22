@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/EIGSEP/CMT-VNA/compare/v1.3.0...v1.3.1) (2026-05-22)
+
+
+### Documentation
+
+* update CLAUDE.md Python version references to 3.10+/3.10-3.13 ([0e71f3d](https://github.com/EIGSEP/CMT-VNA/commit/0e71f3d4d9fcac24fe9acae47ac182e6895a11b0))
+
 ## [1.3.0](https://github.com/EIGSEP/CMT-VNA/compare/v1.2.0...v1.3.0) (2026-04-21)
 
 
