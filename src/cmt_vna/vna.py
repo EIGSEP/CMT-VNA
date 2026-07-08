@@ -411,6 +411,39 @@ class VNA:
         s11["rec"] = self.measure_S11()
         return s11
 
+    def measure_dut(self, state):
+        """
+        Measure S11 of an arbitrary DUT selected by switch path name.
+
+        Generic companion to ``measure_ant`` / ``measure_rec``: uses
+        the switch callable to route the RF signal to ``state``, then
+        takes one S11 sweep. Use for paths that have no dedicated
+        convenience method (e.g. ``VNAAMB``, ``VNASP1``).
+
+        Parameters
+        ----------
+        state : str
+            Switch path name, passed verbatim to ``switch_fn``.
+
+        Returns
+        -------
+        s11 : np.ndarray
+            Complex S11 sweep of the selected DUT.
+
+        Raises
+        -------
+        RuntimeError
+            If the attribute switch_fn is None.
+        Exception
+            Any exception raised by ``switch_fn`` propagates, aborting
+            before the S11 measurement.
+
+        """
+        if self.switch_fn is None:
+            raise RuntimeError("No switch_fn set, cannot measure S11.")
+        self.switch_fn(state)
+        return self.measure_S11()
+
     def activeflag(self, data, cal, thresholds=None):
         """
         Sanity-check field calibration and measurement S11 dictionaries.

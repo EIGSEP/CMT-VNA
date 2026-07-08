@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 import tempfile
 import time
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock, call, patch
 
 from cmt_vna.vna import IP, PORT, DEFAULT_FLAG_THRESHOLDS, lin2dB, mlin
 from cmt_vna.testing import DummyVNA
@@ -289,6 +289,33 @@ class TestDummyVNA:
         self.switch_fn.assert_called_once_with("VNARF")
         assert "rec" in s11
         assert isinstance(s11["rec"], np.ndarray)
+
+    def test_measure_dut_routes_switch_and_returns_sweep(self):
+        """measure_dut switches to the named path, then sweeps."""
+        self.vna.setup(1e6, 250e6, 1000, 100, -5)
+        s11 = self.vna.measure_dut("VNAAMB")
+        self.switch_fn.assert_called_once_with("VNAAMB")
+        assert isinstance(s11, np.ndarray)
+        assert s11.shape == (1000,)
+
+    def test_measure_dut_without_switch_fn(self):
+        """measure_dut without switch_fn raises, like measure_ant."""
+        self.vna.switch_fn = None
+        with pytest.raises(RuntimeError, match="No switch_fn set"):
+            self.vna.measure_dut("VNAAMB")
+
+    def test_measure_dut_switch_fn_failure_propagates(self):
+        """A failed switch aborts before the S11 sweep — a silent
+        proceed would record data on the wrong path. Verifies that the
+        sweep never runs and the switch was called exactly once with
+        the correct path."""
+        self.vna.setup(1e6, 250e6, 1000, 100, -5)
+        self.vna.switch_fn = MagicMock(side_effect=RuntimeError("switch boom"))
+        with patch.object(self.vna, "measure_S11") as m_s11:
+            with pytest.raises(RuntimeError, match="switch boom"):
+                self.vna.measure_dut("VNASP1")
+        self.vna.switch_fn.assert_called_once_with("VNASP1")
+        m_s11.assert_not_called()
 
     def test_read_data(self):
         """Test read_data method."""
