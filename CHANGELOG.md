@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/EIGSEP/CMT-VNA/compare/v1.3.1...v1.4.0) (2026-07-08)
+
+
+### Features
+
+* add generic measure_dut for arbitrary switch paths ([208e35e](https://github.com/EIGSEP/CMT-VNA/commit/208e35eb295a2e5d099d49e0458110685467a6e3))
+
 ## [1.3.1](https://github.com/EIGSEP/CMT-VNA/compare/v1.3.0...v1.3.1) (2026-05-22)
 
 
