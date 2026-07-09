@@ -20,9 +20,6 @@ class DummyResource:
         self._npoints = self._DEFAULT_NPOINTS
         self._fstart = self._DEFAULT_FSTART
         self._fstop = self._DEFAULT_FSTOP
-        # Real instruments default to ASCII transfer until FORM:DATA
-        # is written; binary-block queries fail in that state.
-        self._form_data = "ASC"
 
     def write(self, command):
         """Parse SCPI commands to track instrument state."""
@@ -36,15 +33,8 @@ class DummyResource:
         elif cmd.startswith("SENS1:SWE:POIN"):
             parts = cmd.split()
             self._npoints = int(float(parts[1]))
-        elif cmd.startswith("FORM:DATA "):
-            # per the RVNA SCPI manual, only ASCii|REAL|REAL32 are
-            # valid; out-of-range values (e.g. Keysight-style
-            # "REAL,64") mean "the command is ignored". The query
-            # echo set is {ASC|REAL|REAL32}.
-            value = cmd.split(maxsplit=1)[1].strip().upper()
-            echo = {"ASC": "ASC", "ASCII": "ASC"}.get(value, value)
-            if echo in ("ASC", "REAL", "REAL32"):
-                self._form_data = echo
+        # like the Linux cmtvna server, unrecognized writes (notably
+        # the whole FORMat subsystem) are silently ignored
 
     def query(self, command):
         """Respond to simple SCPI queries."""
@@ -53,18 +43,16 @@ class DummyResource:
             return "DummyVNA"
         if cmd == "*OPC?":
             return "1"
-        if cmd == "FORM:DATA?":
-            return self._form_data
         raise ValueError(f"Query command {command!r} not recognized by mock.")
 
-    def query_binary_values(
-        self, command, datatype="d", is_big_endian=True, container=None
-    ):
+    def query_ascii_values(self, command, container=list):
         """
-        Simulate querying binary array data from the VNA.
+        Simulate querying ASCII array data from the VNA — the only
+        transfer format the Linux cmtvna server supports (it ignores
+        the FORMat subsystem, so binary transfer is unavailable).
 
         Supports:
-        - CALC:TRAC:DATA:FDAT? : interleaved real/imag S11 data
+        - CALC:DATA:SDAT? : interleaved real/imag S11 data
           (2 * npoints values, all zeros)
         - SENS1:FREQ:DATA? : frequency array (npoints values)
 
@@ -72,11 +60,7 @@ class DummyResource:
         ----------
         command : str
             SCPI query command.
-        datatype : str
-            Data type format character (ignored in mock).
-        is_big_endian : bool
-            Byte order (ignored in mock).
-        container : callable or None
+        container : callable
             Container for the returned data (e.g. np.array).
 
         Returns
@@ -85,24 +69,14 @@ class DummyResource:
             Simulated data response from the VNA.
 
         """
-        if not self._form_data.startswith("REAL"):
-            # mimic pyvisa on hardware: an ASCII reply carries no IEEE
-            # block header, so binary parsing fails
-            raise ValueError(
-                'Could not find hash sign ("#") indicating the start '
-                "of the block: instrument data format is "
-                f"{self._form_data!r}"
-            )
         cmd = command.strip()
-        if cmd == "CALC:TRAC:DATA:FDAT?":
+        if cmd == "CALC:DATA:SDAT?":
             data = np.zeros(2 * self._npoints)
         elif cmd == "SENS1:FREQ:DATA?":
             data = np.linspace(self._fstart, self._fstop, self._npoints)
         else:
             raise ValueError(f"Command {command!r} not recognized by mock.")
-        if container is not None:
-            data = container(data)
-        return data
+        return container(data)
 
     def close(self):
         pass
