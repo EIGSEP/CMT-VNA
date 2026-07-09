@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.4.1](https://github.com/EIGSEP/CMT-VNA/compare/v1.4.0...v1.4.1) (2026-07-09)
+
+
+### Bug Fixes
+
+* FORM:DATA REAL — CMT ignores Keysight-style "REAL,64" ([e4cd0a4](https://github.com/EIGSEP/CMT-VNA/commit/e4cd0a4be65430d13b410b20940ecc40835c13a5))
+* revert to ASCII data transfer; S11 via CALC:DATA:SDAT? ([c511cc7](https://github.com/EIGSEP/CMT-VNA/commit/c511cc7a449144e6e094a87428c3c7d5844354c9))
+* verify instrument config on connect; re-push on cold start ([df1d506](https://github.com/EIGSEP/CMT-VNA/commit/df1d5062bcccb570af0c1cdc8f0e3b3b537aaa1e))
+
 ## [1.4.0](https://github.com/EIGSEP/CMT-VNA/compare/v1.3.1...v1.4.0) (2026-07-08)
 
 
