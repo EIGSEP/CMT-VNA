@@ -642,13 +642,13 @@ class TestConfigVerify:
 
     def test_warm_instrument_configures_first_try(self):
         vna = DummyVNA()
-        assert vna.s._form_data == "REAL,64"
+        assert vna.s._form_data == "REAL"
 
     def test_cold_start_config_is_repushed(self):
         vna = ColdStartVNA()
         # first burst (6 writes) dropped, second burst landed
         assert vna.s.write_count == 12
-        assert vna.s._form_data == "REAL,64"
+        assert vna.s._form_data == "REAL"
         # the recovered instrument serves binary queries
         freqs = vna.setup()
         assert len(freqs) == vna.npoints
@@ -659,4 +659,14 @@ class TestConfigVerify:
 
     def test_query_timeout_during_verify_is_retried(self):
         vna = TimeoutOnceVNA()
-        assert vna.s._form_data == "REAL,64"
+        assert vna.s._form_data == "REAL"
+
+    def test_keysight_style_format_value_is_ignored(self):
+        # regression guard for the field failure: CMT documents
+        # out-of-range FORM:DATA values as "the command is ignored",
+        # so the Keysight-style "REAL,64" strands a fresh server in
+        # its ASCII preset. A driver writing it can't pass
+        # _verify_config against this dummy.
+        s = DummyResource()
+        s.write("FORM:DATA REAL,64\n")
+        assert s._form_data == "ASC"
