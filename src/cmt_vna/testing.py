@@ -37,7 +37,14 @@ class DummyResource:
             parts = cmd.split()
             self._npoints = int(float(parts[1]))
         elif cmd.startswith("FORM:DATA "):
-            self._form_data = cmd.split(maxsplit=1)[1]
+            # per the RVNA SCPI manual, only ASCii|REAL|REAL32 are
+            # valid; out-of-range values (e.g. Keysight-style
+            # "REAL,64") mean "the command is ignored". The query
+            # echo set is {ASC|REAL|REAL32}.
+            value = cmd.split(maxsplit=1)[1].strip().upper()
+            echo = {"ASC": "ASC", "ASCII": "ASC"}.get(value, value)
+            if echo in ("ASC", "REAL", "REAL32"):
+                self._form_data = echo
 
     def query(self, command):
         """Respond to simple SCPI queries."""

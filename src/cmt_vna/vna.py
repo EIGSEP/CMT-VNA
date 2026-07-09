@@ -128,7 +128,11 @@ class VNA:
         """
         s.write("CALC:FORM SCOM\n")  # get s11 as real and imag
         s.write("FORM:BORD NORM\n")  # big-endian binary transfer
-        s.write("FORM:DATA REAL,64\n")  # 64-bit binary transfer
+        # 64-bit binary transfer. CMT accepts only ASCii|REAL|REAL32
+        # (REAL = IEEE-64); anything else — e.g. the Keysight-style
+        # "REAL,64" — is documented as "the command is ignored",
+        # leaving the preset ASCII format.
+        s.write("FORM:DATA REAL\n")
         s.write("SENS1:AVER:COUN 1\n")  # number of averages
         # linear sweep instead of point by point
         s.write("SWE:TYPE LIN\n")
@@ -142,10 +146,12 @@ class VNA:
         measurement application is ready; configuration writes sent in
         that window are silently dropped, leaving the default ASCII
         data format and breaking every binary-block query.
-        ``FORM:DATA?`` is the sentinel: once it echoes ``REAL``, the
-        configuration burst was processed. On a mismatch the full
-        burst is re-pushed — the writes travel together, so one
-        dropped write means the whole burst must be repeated.
+        ``FORM:DATA?`` is the sentinel: once it echoes exactly
+        ``REAL`` (the manual's query response set is
+        ``{ASC|REAL|REAL32}``), the configuration burst was processed.
+        On a mismatch the full burst is re-pushed — the writes travel
+        together, so one dropped write means the whole burst must be
+        repeated.
 
         Parameters
         ----------
@@ -165,7 +171,7 @@ class VNA:
                 reply = s.query("FORM:DATA?\n").strip().upper()
             except pyvisa.VisaIOError:
                 reply = None  # not serving queries yet; retry below
-            if reply is not None and reply.replace(" ", "").startswith("REAL"):
+            if reply == "REAL":
                 return
             if time.monotonic() >= deadline:
                 raise RuntimeError(
