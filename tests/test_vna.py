@@ -1,6 +1,5 @@
 import numpy as np
 from pathlib import Path
-import pyvisa
 import pytest
 import tempfile
 import time
@@ -565,108 +564,30 @@ class TestActiveFlag:
             assert high is None or isinstance(high, (int, float))
 
 
-class ColdStartResource(DummyResource):
+class TestAsciiTransfer:
     """
-    Models a cold-started instrument server (on-demand cmtvna.service):
-    the SCPI front-end answers queries but the measurement app drops
-    every write until the first query round-trip completes — the
-    failure mode observed on hardware, where the initial config burst
-    was lost and SENS1:FREQ:DATA? came back ASCII.
+    Array reads must be ASCII: the Linux cmtvna socket server ignores
+    the FORMat subsystem (FORM:DATA writes are no-ops, FORM:DATA? is
+    never answered — verified on the R60, server 1.7.1, 2026-07-08),
+    so binary-block transfer is unavailable. S11 reads use
+    CALC:DATA:SDAT? because it returns complex re/im pairs regardless
+    of the display format (CALC:FORM may be ignored the same way).
     """
 
-    def __init__(self):
-        super().__init__()
-        self.ready = False
-        self.write_count = 0
-
-    def write(self, command):
-        self.write_count += 1
-        if self.ready:
-            super().write(command)
-
-    def query(self, command):
-        reply = super().query(command)
-        # the app finishes initializing while the driver waits for
-        # this first echo; subsequent writes land
-        self.ready = True
-        return reply
-
-
-class NeverReadyResource(ColdStartResource):
-    """Drops every write forever: configuration can never land."""
-
-    def query(self, command):
-        return DummyResource.query(self, command)
-
-
-class TimeoutThenReadyResource(DummyResource):
-    """First query times out (VisaIOError), then behaves normally."""
-
-    def __init__(self):
-        super().__init__()
-        self._timeouts_left = 1
-
-    def query(self, command):
-        if self._timeouts_left:
-            self._timeouts_left -= 1
-            raise pyvisa.VisaIOError(pyvisa.constants.StatusCode.error_timeout)
-        return super().query(command)
-
-
-class ColdStartVNA(DummyVNA):
-    CONFIG_VERIFY_INTERVAL_S = 0.0
-    _resource_cls = ColdStartResource
-
-
-class NeverReadyVNA(DummyVNA):
-    CONFIG_VERIFY_TIMEOUT_S = 0.05
-    CONFIG_VERIFY_INTERVAL_S = 0.0
-    _resource_cls = NeverReadyResource
-
-
-class TimeoutOnceVNA(DummyVNA):
-    CONFIG_VERIFY_INTERVAL_S = 0.0
-    _resource_cls = TimeoutThenReadyResource
-
-
-class TestConfigVerify:
-    """Connect-time config verification (cold-start write drop)."""
-
-    def test_binary_query_on_unconfigured_instrument_fails(self):
-        # contract fidelity: a fresh instrument defaults to ASCII, so
-        # binary-block queries must fail exactly like pyvisa does on
-        # hardware
-        s = DummyResource()
-        with pytest.raises(ValueError, match="hash sign"):
-            s.query_binary_values("SENS1:FREQ:DATA?")
-
-    def test_warm_instrument_configures_first_try(self):
+    def test_freqs_is_ascii_read(self):
         vna = DummyVNA()
-        assert vna.s._form_data == "REAL"
+        vna.setup(npoints=101)
+        freqs = vna.freqs
+        assert len(freqs) == 101
 
-    def test_cold_start_config_is_repushed(self):
-        vna = ColdStartVNA()
-        # first burst (6 writes) dropped, second burst landed
-        assert vna.s.write_count == 12
-        assert vna.s._form_data == "REAL"
-        # the recovered instrument serves binary queries
-        freqs = vna.setup()
-        assert len(freqs) == vna.npoints
+    def test_measure_s11_deinterleaves_sdat(self):
+        vna = DummyVNA()
+        vna.setup(npoints=101)
+        data = vna.measure_S11()
+        assert np.iscomplexobj(data)
+        assert len(data) == 101
 
-    def test_never_ready_raises_with_last_reply(self):
-        with pytest.raises(RuntimeError, match="FORM:DATA. reply: 'ASC'"):
-            NeverReadyVNA()
-
-    def test_query_timeout_during_verify_is_retried(self):
-        vna = TimeoutOnceVNA()
-        assert vna.s._form_data == "REAL"
-
-    def test_keysight_style_format_value_is_ignored(self):
-        # regression guard for the field failure: CMT documents
-        # out-of-range FORM:DATA values as "the command is ignored",
-        # so the Keysight-style "REAL,64" strands a fresh server in
-        # its ASCII preset. A driver writing it can't pass
-        # _verify_config against this dummy.
-        s = DummyResource()
-        s.write("FORM:DATA REAL,64\n")
-        assert s._form_data == "ASC"
+    def test_dummy_resource_has_no_binary_path(self):
+        # the driver must not regress to binary reads: the dummy, like
+        # the real server, only serves ASCII
+        assert not hasattr(DummyResource(), "query_binary_values")

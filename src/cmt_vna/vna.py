@@ -34,14 +34,6 @@ def mlin(x):
 
 
 class VNA:
-    # A cold-started instrument server answers *IDN? before its
-    # measurement application processes configuration writes; writes
-    # sent in that window are silently dropped. _verify_config
-    # re-pushes the configuration until the instrument echoes it back,
-    # giving up after CONFIG_VERIFY_TIMEOUT_S.
-    CONFIG_VERIFY_TIMEOUT_S = 30.0
-    CONFIG_VERIFY_INTERVAL_S = 1.0
-
     def __init__(
         self,
         ip=IP,
@@ -117,8 +109,14 @@ class VNA:
         """
         Write the measurement configuration to the VNA.
 
-        Writes are fire-and-forget; _verify_config confirms the
-        instrument applied them.
+        Data transfer stays in the instrument's ASCII preset: the
+        Linux cmtvna socket server ignores the FORMat subsystem —
+        FORM:DATA writes are no-ops and FORM:DATA? is never answered
+        (verified on the R60, server 1.7.1, 2026-07-08) — so binary
+        transfer is unavailable and all array reads use
+        ``query_ascii_values``. CALC:FORM is likewise not relied on:
+        S11 reads use ``CALC:DATA:SDAT?``, which returns complex
+        re/im pairs independent of the display format.
 
         Parameters
         ----------
@@ -126,67 +124,14 @@ class VNA:
             Opened resource to the VNA.
 
         """
-        s.write("CALC:FORM SCOM\n")  # get s11 as real and imag
-        s.write("FORM:BORD NORM\n")  # big-endian binary transfer
-        # 64-bit binary transfer. CMT accepts only ASCii|REAL|REAL32
-        # (REAL = IEEE-64); anything else — e.g. the Keysight-style
-        # "REAL,64" — is documented as "the command is ignored",
-        # leaving the preset ASCII format.
-        s.write("FORM:DATA REAL\n")
         s.write("SENS1:AVER:COUN 1\n")  # number of averages
         # linear sweep instead of point by point
         s.write("SWE:TYPE LIN\n")
         s.write("TRIG:SOUR BUS\n")
 
-    def _verify_config(self, s):
-        """
-        Block until the VNA echoes the pushed configuration back.
-
-        A cold-started instrument server answers ``*IDN?`` before its
-        measurement application is ready; configuration writes sent in
-        that window are silently dropped, leaving the default ASCII
-        data format and breaking every binary-block query.
-        ``FORM:DATA?`` is the sentinel: once it echoes exactly
-        ``REAL`` (the manual's query response set is
-        ``{ASC|REAL|REAL32}``), the configuration burst was processed.
-        On a mismatch the full burst is re-pushed — the writes travel
-        together, so one dropped write means the whole burst must be
-        repeated.
-
-        Parameters
-        ----------
-        s : pyvisa.Resource
-            Opened resource to the VNA.
-
-        Raises
-        ------
-        RuntimeError
-            If the instrument does not echo the configuration within
-            CONFIG_VERIFY_TIMEOUT_S seconds.
-
-        """
-        deadline = time.monotonic() + self.CONFIG_VERIFY_TIMEOUT_S
-        while True:
-            try:
-                reply = s.query("FORM:DATA?\n").strip().upper()
-            except pyvisa.VisaIOError:
-                reply = None  # not serving queries yet; retry below
-            if reply == "REAL":
-                return
-            if time.monotonic() >= deadline:
-                raise RuntimeError(
-                    "VNA did not accept configuration within "
-                    f"{self.CONFIG_VERIFY_TIMEOUT_S:.0f} s (last "
-                    f"FORM:DATA? reply: {reply!r}); is the instrument "
-                    "server still starting?"
-                )
-            time.sleep(self.CONFIG_VERIFY_INTERVAL_S)
-            self._push_config(s)
-
     def _configure_vna(self):
         """
-        Connect to the VNA, configure it, and verify the configuration
-        was applied.
+        Connect to the VNA and configure it.
 
         Returns
         -------
@@ -196,7 +141,6 @@ class VNA:
         """
         s = self._open_resource()
         self._push_config(s)
-        self._verify_config(s)
         return s
 
     @property
@@ -260,11 +204,10 @@ class VNA:
 
     @property
     def freqs(self):
-        return self.s.query_binary_values(
-            "SENS1:FREQ:DATA?",
-            datatype="d",
-            is_big_endian=True,
-            container=np.array,
+        # ASCII transfer: the server ignores FORM:DATA (see
+        # _push_config), so binary-block reads are unavailable
+        return self.s.query_ascii_values(
+            "SENS1:FREQ:DATA?", container=np.array
         )
 
     @property
@@ -365,12 +308,11 @@ class VNA:
         self.wait_for_opc()  # wait for operation complete
         if verbose:
             print("swept")
-        data = self.s.query_binary_values(
-            "CALC:TRAC:DATA:FDAT?",
-            datatype="d",
-            is_big_endian=True,
-            container=np.array,
-        )
+        # SDAT (not FDAT): complex S-parameter re/im pairs regardless
+        # of display format, so no dependence on CALC:FORM — which the
+        # server may ignore just like FORM:DATA. ASCII per
+        # _push_config.
+        data = self.s.query_ascii_values("CALC:DATA:SDAT?", container=np.array)
         self.wait_for_opc()  # wait for operation complete
         if verbose:
             sweep_time = time.time() - t0
