@@ -20,6 +20,9 @@ class DummyResource:
         self._npoints = self._DEFAULT_NPOINTS
         self._fstart = self._DEFAULT_FSTART
         self._fstop = self._DEFAULT_FSTOP
+        # Real instruments default to ASCII transfer until FORM:DATA
+        # is written; binary-block queries fail in that state.
+        self._form_data = "ASC"
 
     def write(self, command):
         """Parse SCPI commands to track instrument state."""
@@ -33,6 +36,8 @@ class DummyResource:
         elif cmd.startswith("SENS1:SWE:POIN"):
             parts = cmd.split()
             self._npoints = int(float(parts[1]))
+        elif cmd.startswith("FORM:DATA "):
+            self._form_data = cmd.split(maxsplit=1)[1]
 
     def query(self, command):
         """Respond to simple SCPI queries."""
@@ -41,6 +46,8 @@ class DummyResource:
             return "DummyVNA"
         if cmd == "*OPC?":
             return "1"
+        if cmd == "FORM:DATA?":
+            return self._form_data
         raise ValueError(f"Query command {command!r} not recognized by mock.")
 
     def query_binary_values(
@@ -71,6 +78,14 @@ class DummyResource:
             Simulated data response from the VNA.
 
         """
+        if not self._form_data.startswith("REAL"):
+            # mimic pyvisa on hardware: an ASCII reply carries no IEEE
+            # block header, so binary parsing fails
+            raise ValueError(
+                'Could not find hash sign ("#") indicating the start '
+                "of the block: instrument data format is "
+                f"{self._form_data!r}"
+            )
         cmd = command.strip()
         if cmd == "CALC:TRAC:DATA:FDAT?":
             data = np.zeros(2 * self._npoints)
@@ -94,18 +109,17 @@ class DummyVNA(VNA):
     possible.
     """
 
-    def _configure_vna(self):
+    # Resource class to instantiate; tests override this to model
+    # cold-start / never-ready instrument servers.
+    _resource_cls = DummyResource
+
+    def _open_resource(self):
         """
-        Override _configure_vna to use DummyResource instead of real
-        PyVISA, while still exercising the SCPI initialization writes.
+        Override _open_resource to use DummyResource instead of real
+        PyVISA. The base class _configure_vna still runs, so the SCPI
+        config push and the verify loop are exercised for real.
         """
-        s = DummyResource()
+        s = self._resource_cls()
         s.read_termination = "\n"
         s.timeout = self.vna_timeout
-        s.write("CALC:FORM SCOM\n")
-        s.write("FORM:BORD NORM\n")
-        s.write("FORM:DATA REAL,64\n")
-        s.write("SENS1:AVER:COUN 1\n")
-        s.write("SWE:TYPE LIN\n")
-        s.write("TRIG:SOUR BUS\n")
         return s

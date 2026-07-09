@@ -34,6 +34,14 @@ def mlin(x):
 
 
 class VNA:
+    # A cold-started instrument server answers *IDN? before its
+    # measurement application processes configuration writes; writes
+    # sent in that window are silently dropped. _verify_config
+    # re-pushes the configuration until the instrument echoes it back,
+    # giving up after CONFIG_VERIFY_TIMEOUT_S.
+    CONFIG_VERIFY_TIMEOUT_S = 30.0
+    CONFIG_VERIFY_INTERVAL_S = 1.0
+
     def __init__(
         self,
         ip=IP,
@@ -88,9 +96,9 @@ class VNA:
         self.vna_timeout = timeout * 1e3  # convert to milliseconds
         self.s = self._configure_vna()
 
-    def _configure_vna(self):
+    def _open_resource(self):
         """
-        Use pyvisa to connect to the VNA and configure it.
+        Use pyvisa to open the socket resource to the VNA.
 
         Returns
         -------
@@ -103,8 +111,21 @@ class VNA:
         s = rm.open_resource(cmd)
         s.read_termination = "\n"
         s.timeout = self.vna_timeout
+        return s
 
-        # settings
+    def _push_config(self, s):
+        """
+        Write the measurement configuration to the VNA.
+
+        Writes are fire-and-forget; _verify_config confirms the
+        instrument applied them.
+
+        Parameters
+        ----------
+        s : pyvisa.Resource
+            Opened resource to the VNA.
+
+        """
         s.write("CALC:FORM SCOM\n")  # get s11 as real and imag
         s.write("FORM:BORD NORM\n")  # big-endian binary transfer
         s.write("FORM:DATA REAL,64\n")  # 64-bit binary transfer
@@ -112,6 +133,64 @@ class VNA:
         # linear sweep instead of point by point
         s.write("SWE:TYPE LIN\n")
         s.write("TRIG:SOUR BUS\n")
+
+    def _verify_config(self, s):
+        """
+        Block until the VNA echoes the pushed configuration back.
+
+        A cold-started instrument server answers ``*IDN?`` before its
+        measurement application is ready; configuration writes sent in
+        that window are silently dropped, leaving the default ASCII
+        data format and breaking every binary-block query.
+        ``FORM:DATA?`` is the sentinel: once it echoes ``REAL``, the
+        configuration burst was processed. On a mismatch the full
+        burst is re-pushed — the writes travel together, so one
+        dropped write means the whole burst must be repeated.
+
+        Parameters
+        ----------
+        s : pyvisa.Resource
+            Opened resource to the VNA.
+
+        Raises
+        ------
+        RuntimeError
+            If the instrument does not echo the configuration within
+            CONFIG_VERIFY_TIMEOUT_S seconds.
+
+        """
+        deadline = time.monotonic() + self.CONFIG_VERIFY_TIMEOUT_S
+        while True:
+            try:
+                reply = s.query("FORM:DATA?\n").strip().upper()
+            except pyvisa.VisaIOError:
+                reply = None  # not serving queries yet; retry below
+            if reply is not None and reply.replace(" ", "").startswith("REAL"):
+                return
+            if time.monotonic() >= deadline:
+                raise RuntimeError(
+                    "VNA did not accept configuration within "
+                    f"{self.CONFIG_VERIFY_TIMEOUT_S:.0f} s (last "
+                    f"FORM:DATA? reply: {reply!r}); is the instrument "
+                    "server still starting?"
+                )
+            time.sleep(self.CONFIG_VERIFY_INTERVAL_S)
+            self._push_config(s)
+
+    def _configure_vna(self):
+        """
+        Connect to the VNA, configure it, and verify the configuration
+        was applied.
+
+        Returns
+        -------
+        s : pyvisa.Resource
+            Opened resource to the VNA.
+
+        """
+        s = self._open_resource()
+        self._push_config(s)
+        self._verify_config(s)
         return s
 
     @property

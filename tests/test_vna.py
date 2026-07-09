@@ -1,12 +1,13 @@
 import numpy as np
 from pathlib import Path
+import pyvisa
 import pytest
 import tempfile
 import time
 from unittest.mock import MagicMock, call, patch
 
 from cmt_vna.vna import IP, PORT, DEFAULT_FLAG_THRESHOLDS, lin2dB, mlin
-from cmt_vna.testing import DummyVNA
+from cmt_vna.testing import DummyResource, DummyVNA
 
 
 class TestDummyVNA:
@@ -562,3 +563,100 @@ class TestActiveFlag:
             low, high = DEFAULT_FLAG_THRESHOLDS[key]
             assert low is None or isinstance(low, (int, float))
             assert high is None or isinstance(high, (int, float))
+
+
+class ColdStartResource(DummyResource):
+    """
+    Models a cold-started instrument server (on-demand cmtvna.service):
+    the SCPI front-end answers queries but the measurement app drops
+    every write until the first query round-trip completes — the
+    failure mode observed on hardware, where the initial config burst
+    was lost and SENS1:FREQ:DATA? came back ASCII.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.ready = False
+        self.write_count = 0
+
+    def write(self, command):
+        self.write_count += 1
+        if self.ready:
+            super().write(command)
+
+    def query(self, command):
+        reply = super().query(command)
+        # the app finishes initializing while the driver waits for
+        # this first echo; subsequent writes land
+        self.ready = True
+        return reply
+
+
+class NeverReadyResource(ColdStartResource):
+    """Drops every write forever: configuration can never land."""
+
+    def query(self, command):
+        return DummyResource.query(self, command)
+
+
+class TimeoutThenReadyResource(DummyResource):
+    """First query times out (VisaIOError), then behaves normally."""
+
+    def __init__(self):
+        super().__init__()
+        self._timeouts_left = 1
+
+    def query(self, command):
+        if self._timeouts_left:
+            self._timeouts_left -= 1
+            raise pyvisa.VisaIOError(pyvisa.constants.StatusCode.error_timeout)
+        return super().query(command)
+
+
+class ColdStartVNA(DummyVNA):
+    CONFIG_VERIFY_INTERVAL_S = 0.0
+    _resource_cls = ColdStartResource
+
+
+class NeverReadyVNA(DummyVNA):
+    CONFIG_VERIFY_TIMEOUT_S = 0.05
+    CONFIG_VERIFY_INTERVAL_S = 0.0
+    _resource_cls = NeverReadyResource
+
+
+class TimeoutOnceVNA(DummyVNA):
+    CONFIG_VERIFY_INTERVAL_S = 0.0
+    _resource_cls = TimeoutThenReadyResource
+
+
+class TestConfigVerify:
+    """Connect-time config verification (cold-start write drop)."""
+
+    def test_binary_query_on_unconfigured_instrument_fails(self):
+        # contract fidelity: a fresh instrument defaults to ASCII, so
+        # binary-block queries must fail exactly like pyvisa does on
+        # hardware
+        s = DummyResource()
+        with pytest.raises(ValueError, match="hash sign"):
+            s.query_binary_values("SENS1:FREQ:DATA?")
+
+    def test_warm_instrument_configures_first_try(self):
+        vna = DummyVNA()
+        assert vna.s._form_data == "REAL,64"
+
+    def test_cold_start_config_is_repushed(self):
+        vna = ColdStartVNA()
+        # first burst (6 writes) dropped, second burst landed
+        assert vna.s.write_count == 12
+        assert vna.s._form_data == "REAL,64"
+        # the recovered instrument serves binary queries
+        freqs = vna.setup()
+        assert len(freqs) == vna.npoints
+
+    def test_never_ready_raises_with_last_reply(self):
+        with pytest.raises(RuntimeError, match="FORM:DATA. reply: 'ASC'"):
+            NeverReadyVNA()
+
+    def test_query_timeout_during_verify_is_retried(self):
+        vna = TimeoutOnceVNA()
+        assert vna.s._form_data == "REAL,64"
