@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Python package (`cmt_vna`) for controlling a Copper Mountain Technologies (CMT) R60 Vector Network Analyzer via SCPI commands over PyVISA. Includes OSL (Open-Short-Load) calibration based on Monsalve et al. 2016. Designed for the EIGSEP radio astronomy project, typically deployed on a Raspberry Pi running Debian Trixie.
+Python package (`cmt_vna`) for controlling a Copper Mountain Technologies (CMT) R60 Vector Network Analyzer via SCPI commands over PyVISA. Measurement and instrument control only — the OSL calibration math based on Monsalve et al. 2016 lives in `eigsep_cal`. Designed for the EIGSEP radio astronomy project, typically deployed on a Raspberry Pi running Debian Trixie.
 
 ## Common Commands
 
@@ -31,11 +31,9 @@ ruff format .
 
 ## Architecture
 
-Three modules in `src/cmt_vna/`:
+Two modules in `src/cmt_vna/`. This package drives the instrument and does no analysis: the calibration math (`calkit`) lives in `eigsep_cal`.
 
-- **`vna.py`** — `VNA` class: connects to the instrument via PyVISA (TCP socket on port 5025), configures measurement parameters, performs S11 measurements, runs OSL calibration sequences, and saves data to NPZ files. Optionally integrates with a `SwitchNetwork` (from `picohost`) for antenna/receiver switching.
-
-- **`calkit.py`** — Calibration math implementing Monsalve et al. 2016 equations. `CalStandard` / `CalKit` base classes, with `S911T` as the concrete calibration kit. Functions for computing reflection coefficients, network S-parameters, and embedding/de-embedding.
+- **`vna.py`** — `VNA` class: connects to the instrument via PyVISA (TCP socket on port 5025), configures measurement parameters, performs S11 measurements, runs OSL measurement sequences, and saves data to NPZ files. Optionally integrates with a `SwitchNetwork` (from `picohost`) for antenna/receiver switching.
 
 - **`testing.py`** — `DummyVNA` and `DummyResource` classes that mock hardware for testing. `DummyVNA` extends `VNA` and overrides hardware communication; `DummyResource` simulates PyVISA responses.
 

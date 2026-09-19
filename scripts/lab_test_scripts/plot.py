@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from cmt_vna import calkit as cal
+from eigsep_cal import calkit as cal
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 

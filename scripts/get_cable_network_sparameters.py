@@ -4,7 +4,7 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from datetime import datetime
 import numpy as np
 from cmt_vna import VNA
-from cmt_vna import calkit as cal
+from eigsep_cal import calkit as cal
 from picohost import PicoRFSwitch
 import warnings
 
